@@ -9,6 +9,7 @@ def run():
     params = Params()
     data_transf = DataTransformer(**params.data_params)
     data = data_transf.get_data()
+    print()
 
 if __name__ == '__main__':
     run()
