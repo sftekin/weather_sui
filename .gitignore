@@ -1,0 +1,9 @@
+.idea
+.coverage
+
+data/*
+!data/.gitkeep
+!data/pickles
+
+results/*
+!results/.gitkeep
