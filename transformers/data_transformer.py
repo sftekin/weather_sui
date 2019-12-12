@@ -15,9 +15,11 @@ class DataTransformer:
         self.data_path = 'data/London_historical_meo_grid.csv'
         self.save_path = 'data/pickles/raw_data.pkl'
 
-    def get_data(self):
+    def transform(self):
         data_df = self.__read_weather_data()
         data_df = self.__transform_weather_data(data_df)
+
+        data_grid = self.__transform_grid(data_df)
         return data_df
 
     def __read_weather_data(self):
@@ -33,11 +35,12 @@ class DataTransformer:
     def __transform_weather_data(self, data):
         data = data.rename(index=str, columns={'stationName': 'grid_index',
                                                'utc_time': 'date'})
+
         # from string to int for grid ids
-        def to_grid(x):
+        def to_grid_idx(x):
             num = int(x.split('_')[-1])
             return num
-        data['grid_index'] = data.loc[:, 'grid_index'].map(to_grid)
+        data['grid_index'] = data.loc[:, 'grid_index'].map(to_grid_idx)
 
         # crop the date for input data
         data_cropped = self.__crop_dates(data)
@@ -68,3 +71,9 @@ class DataTransformer:
             data_avg = data_avg.append(data_stat)
         data_avg.reset_index(inplace=True)
         return data_avg
+
+    def __transform_grid(self, data_df):
+        t = len(data_df[data_df['grid_index'] == 0])
+        m = len(np.unique(data_df['latitude']))
+        n = len(np.unique(data_df['longitude']))
+
