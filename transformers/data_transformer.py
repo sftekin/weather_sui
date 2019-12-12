@@ -12,7 +12,8 @@ class DataTransformer:
         self.end_date = kwargs['end_date']
         self.freq = kwargs['freq']
 
-        self.data_path = 'data/London_historical_meo_grid'
+        self.data_path = 'data/London_historical_meo_grid.csv'
+        self.save_path = 'data/pickles/raw_data.pkl'
 
     def get_data(self):
         data_df = self.__read_weather_data()
@@ -20,13 +21,13 @@ class DataTransformer:
         return data_df
 
     def __read_weather_data(self):
-        if os.path.isfile(self.data_path + '.pkl'):
+        if os.path.isfile(self.save_path):
             print('Loading from pickle')
-            data = pd.read_pickle(self.data_path + '.pkl')
+            data = pd.read_pickle(self.save_path)
         else:
             print('Reading CSV File...')
-            data = pd.read_csv(self.data_path + '.csv')
-            data.to_pickle(self.data_path + '.pkl')
+            data = pd.read_csv(self.data_path)
+            data.to_pickle(self.save_path)
         return data
 
     def __transform_weather_data(self, data):
