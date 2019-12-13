@@ -1,29 +1,22 @@
-import os
-import pandas as pd
-
 from config import Params
-from transformers.data_transformer import DataTransformer
-
-
-def read_weather_data(data_path, save_path):
-    if os.path.isfile(data_path):
-        print('Loading from pickle')
-        data = pd.read_pickle(save_path)
-    else:
-        print('Reading CSV File...')
-        data = pd.read_csv(data_path)
-        data.to_pickle(save_path)
-    return data
+from run_helper import get_data, dataset_split, create_loader
 
 
 def run():
     params = Params()
-    data = read_weather_data(params.data_params['data_path'],
-                             params.data_params['save_path'])
 
-    data_transf = DataTransformer(**params.data_params)
-    grid_data = data_transf.transform(data)
-    print()
+    grid_data = get_data(params.data_params)
+    data_dict = dataset_split(grid_data,
+                              params.data_params['test_ratio'],
+                              params.data_params['val_ratio'])
+
+    data_loaders = create_loader(data_dict, params.train_params['batch_params'])
+
+    for x, y in data_loaders['train']:
+        a = x
+        b = y
+
+    print(a.shape)
 
 
 if __name__ == '__main__':

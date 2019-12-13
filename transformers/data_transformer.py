@@ -7,7 +7,6 @@ pd.options.mode.chained_assignment = None
 
 class DataTransformer:
     def __init__(self, **kwargs):
-
         self.start_date = kwargs['start_date']
         self.end_date = kwargs['end_date']
         self.freq = kwargs['freq']
@@ -18,20 +17,33 @@ class DataTransformer:
         self.N = None
         self.D = None
 
+        start_date_str = self.start_date.strftime('%d-%m-%Y')
+        end_date_str = self.end_date.strftime('%d-%m-%Y')
+        self.grid_save_path = kwargs['grid_save_path'] + (start_date_str +
+                                                          '_' + end_date_str +
+                                                          '_' + str(self.freq) +
+                                                          '.npy')
+
     def transform(self, data_df):
-        # Define the rectangle
-        data_columns = list(data_df.columns.values)
-        selected_columns = data_columns[data_columns.index('temperature'):]
-        self.D = len(selected_columns)
-        self.M = len(np.unique(data_df['latitude']))
-        self.N = len(np.unique(data_df['longitude']))
+        if os.path.isfile(self.grid_save_path):
+            print('Grid has found loading...')
+            data_grid = np.load(self.grid_save_path)
+        else:
+            # Define the rectangle
+            data_columns = list(data_df.columns.values)
+            selected_columns = data_columns[data_columns.index('temperature'):]
+            self.D = len(selected_columns)
+            self.M = len(np.unique(data_df['latitude']))
+            self.N = len(np.unique(data_df['longitude']))
 
-        # Crop by date and degrade by freq
-        data_df = self.__transform_weather_data(data_df)
+            # Crop by date and degrade by freq
+            data_df = self.__transform_weather_data(data_df)
 
-        # Convert to numpy array in T, M, N, D shape
-        data_grid = self.__transform_grid(data_df)
+            # Convert to numpy array in T, M, N, D shape
+            data_grid = self.__transform_grid(data_df)
 
+            print('Grid created saving..')
+            np.save(self.grid_save_path, data_grid)
         return data_grid
 
     def __transform_weather_data(self, data):
