@@ -26,3 +26,26 @@ class Params:
 
             }
         }
+
+        self.model_params = {
+            'constant_params': {
+                "input_size": (35, 100),
+                "input_dim": 13,
+                "output_dim": 6,
+                'num_layers': 5,
+                'window_length': 8,  # This should be same with batch config
+                'encoder_hidden_dim': [20, 20, 10],
+                'encoder_kernel_size': [5, 5, 5, 3, 3],
+                'decoder_hidden_dim': [10, 10, 10],
+                'decoder_kernel_size': [5, 5, 5, 3, 3],
+                'clip': 5,
+                'bias': True,
+                'stateful': True,
+                'peephole_con': False,
+                "regression": "regression",
+                "loss_type": "MSE"
+            },
+            'finetune_params': {
+                "lr": 0.001,
+            }
+        }
