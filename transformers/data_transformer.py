@@ -11,26 +11,17 @@ class DataTransformer:
         self.start_date = kwargs['start_date']
         self.end_date = kwargs['end_date']
         self.freq = kwargs['freq']
+        self.M = None
+        self.N = None
 
-        self.data_path = 'data/London_historical_meo_grid.csv'
-        self.save_path = 'data/pickles/raw_data.pkl'
+    def transform(self, data_df):
+        # Define the rectangle
+        self.M = np.unique(data_df['latitude'])
+        self.N = np.unique(data_df['longitude'])
 
-    def transform(self):
-        data_df = self.__read_weather_data()
         data_df = self.__transform_weather_data(data_df)
-
         data_grid = self.__transform_grid(data_df)
         return data_df
-
-    def __read_weather_data(self):
-        if os.path.isfile(self.save_path):
-            print('Loading from pickle')
-            data = pd.read_pickle(self.save_path)
-        else:
-            print('Reading CSV File...')
-            data = pd.read_csv(self.data_path)
-            data.to_pickle(self.save_path)
-        return data
 
     def __transform_weather_data(self, data):
         data = data.rename(index=str, columns={'stationName': 'grid_index',
