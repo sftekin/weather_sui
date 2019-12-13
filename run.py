@@ -18,9 +18,10 @@ def read_weather_data(data_path, save_path):
 
 def run():
     params = Params()
-    data_transf = DataTransformer(**params.data_params)
     data = read_weather_data(params.data_params['data_path'],
                              params.data_params['save_path'])
+
+    data_transf = DataTransformer(**params.data_params)
     grid_data = data_transf.transform(data)
     print()
 

@@ -11,17 +11,28 @@ class DataTransformer:
         self.start_date = kwargs['start_date']
         self.end_date = kwargs['end_date']
         self.freq = kwargs['freq']
+        self.T = pd.date_range(start=self.start_date,
+                               end=self.end_date,
+                               freq=str(self.freq) + 'H')
         self.M = None
         self.N = None
+        self.D = None
 
     def transform(self, data_df):
         # Define the rectangle
-        self.M = np.unique(data_df['latitude'])
-        self.N = np.unique(data_df['longitude'])
+        data_columns = list(data_df.columns.values)
+        selected_columns = data_columns[data_columns.index('temperature'):]
+        self.D = len(selected_columns)
+        self.M = len(np.unique(data_df['latitude']))
+        self.N = len(np.unique(data_df['longitude']))
 
+        # Crop by date and degrade by freq
         data_df = self.__transform_weather_data(data_df)
+
+        # Convert to numpy array in T, M, N, D shape
         data_grid = self.__transform_grid(data_df)
-        return data_df
+
+        return data_grid
 
     def __transform_weather_data(self, data):
         data = data.rename(index=str, columns={'stationName': 'grid_index',
@@ -37,9 +48,10 @@ class DataTransformer:
         data_cropped = self.__crop_dates(data)
 
         # degrade by input freq
-        grid_indexes = np.unique(data_cropped['grid_index'])
-        data_avg = self.__freq_mean(data_cropped, grid_indexes)
-        return data_avg
+        if self.freq > 1:
+            grid_indexes = np.unique(data_cropped['grid_index'])
+            data_cropped = self.__freq_mean(data_cropped, grid_indexes)
+        return data_cropped
 
     def __crop_dates(self, data):
         date_range = pd.to_datetime(data['date'])
@@ -64,7 +76,14 @@ class DataTransformer:
         return data_avg
 
     def __transform_grid(self, data_df):
-        t = len(data_df[data_df['grid_index'] == 0])
-        m = len(np.unique(data_df['latitude']))
-        n = len(np.unique(data_df['longitude']))
+        grid_array = np.zeros((len(self.T), self.M, self.N, self.D))
+        for day in range(len(self.T)):
+            selected_data = data_df[data_df['date'] == self.T[day]]
+            selected_data = selected_data.loc[:, 'temperature':].values
+            selected_data = np.flip(selected_data.reshape((self.M, self.N, self.D), order='F'), axis=0)
+            grid_array[day, :] = selected_data
+        return grid_array
+
+
+
 

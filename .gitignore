@@ -2,8 +2,7 @@
 .coverage
 
 data/*
-!data/.gitkeep
-!data/pickles
+!data/pickles/.gitkeep
 
 results/*
 !results/.gitkeep
