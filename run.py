@@ -1,5 +1,8 @@
+import pickle
+
 from config import Params
 from run_helper import get_data, dataset_split, create_loader
+from train import trainer
 
 
 def run():
@@ -10,13 +13,12 @@ def run():
                               params.data_params['test_ratio'],
                               params.data_params['val_ratio'])
 
-    data_loaders = create_loader(data_dict, params.train_params['batch_params'])
+    data_loaders = create_loader(data_dict, params.model_params['batch_params'])
+    trained_model = trainer(data_loaders, **params.model_params)
 
-    for x, y in data_loaders['train']:
-        a = x
-        b = y
-
-    print(a.shape)
+    print('Training finished, saving the model')
+    model_file = open('results/conv_lstm.pkl', 'wb')
+    pickle.dump(trained_model, model_file)
 
 
 if __name__ == '__main__':

@@ -156,9 +156,9 @@ class ConvLSTM(nn.Module):
         :return: None
         """
         X, y = Variable(X).float().to(device), Variable(y).float().to(device)
-        cell_idx = Variable(kwargs['cell_idx']).float().to(device)
+        # (b, t, m, n, d) -> (b, t, d, m, n)
+        X = X.permute(0, 1, 4, 2, 3)
         y = y.permute(0, 1, 4, 2, 3)
-        cell_idx = cell_idx.permute(0, 1, 4, 2, 3)
 
         if self.stateful:
             # Creating new variables for the hidden state, otherwise
@@ -173,7 +173,7 @@ class ConvLSTM(nn.Module):
         pred = self.forward(X)
 
         self.optimizer.zero_grad()
-        loss = self.compute_loss(y, pred, cell_idx)
+        loss = self.compute_loss(y, pred)
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -194,14 +194,21 @@ class ConvLSTM(nn.Module):
         pred = self.forward(X)
         return pred.detach().cpu().numpy()
 
+    def score(self, labels, preds):
+        """
+        Given labels and preds arrays, compute loss
+        :param labels: np array
+        :param preds: np array
+        :return: loss (float)
+        """
+        loss = self.compute_loss(torch.Tensor(labels), torch.Tensor(preds))
+        return loss.numpy()
+
     def forward(self, input_tensor):
         """
         :param input_tensor: 5-D tensor of shape (b, t, m, n, d)
         :return: (b, t, m, n, d)
         """
-        # (b, t, m, n, d) -> (b, t, d, m, n)
-        input_tensor = input_tensor.permute(0, 1, 4, 2, 3)
-
         _, latent_info = self.__forward_block(input_tensor,
                                               self.encoder_state,
                                               return_all_layers=True,
@@ -272,20 +279,17 @@ class ConvLSTM(nn.Module):
         self.finetune_params = new_finetune_params
         self._set_optimizer()
 
-    def compute_loss(self, labels, preds, cell_idx):
+    def compute_loss(self, labels, preds):
         """
         Computes the loss given labels and preds
         :param labels: tensor
         :param preds: tensor
-        :param cell_idx: available cells
         :return: loss (float)
         """
-        weight_tensor = cell_idx
         b, t, d, m, n = preds.shape
-
         if self.loss_type == "MSE":
             criterion = nn.MSELoss()
-            loss = criterion(preds, labels) * weight_tensor
+            loss = criterion(preds, labels)
             return loss.mean()
         elif self.loss_type == "BCE":
             criterion = nn.BCELoss()

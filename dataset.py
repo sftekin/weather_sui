@@ -48,6 +48,6 @@ class GridDataset(Dataset):
             label[:-1], label[-1] = selected_grid[1:], self.grid[batch_idx, 0]
 
         selected_grid = torch.from_numpy(selected_grid)
-        label = torch.from_numpy(label[:, :, :, 7:])
+        label = torch.from_numpy(label[:, :, :, :1])
 
         return selected_grid, label
