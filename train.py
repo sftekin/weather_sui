@@ -1,4 +1,9 @@
+import torch
+
 from models.conv_lstm import ConvLSTM
+
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def trainer(data_loaders, **kwargs):
@@ -6,6 +11,7 @@ def trainer(data_loaders, **kwargs):
     batch_size = kwargs['batch_params']['batch_size']
     model = ConvLSTM(kwargs['constant_params'],
                      kwargs['finetune_params'])
+    model = model.to(device)
 
     for epoch in range(num_epoch):
         print('-*-' * 12)
