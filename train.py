@@ -40,7 +40,6 @@ def _evaluate(model, batch_gen):
     batch_size = len(batch_gen)
     running_loss = 0
     for grid, label_grid in batch_gen.batch_next():
-        grid = grid.permute(0, 1, 4, 2, 3)
         label_grid = label_grid.permute(0, 1, 4, 2, 3).cpu().numpy()
 
         pred = model.predict(grid)

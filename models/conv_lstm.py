@@ -170,6 +170,8 @@ class ConvLSTM(nn.Module):
         :return: numpy array, b, t, m, n, d)
         """
         X = Variable(X).float().to(device)
+        X = X.permute(0, 1, 4, 2, 3)
+
         pred = self.forward(X)
         return pred.detach().cpu().numpy()
 
