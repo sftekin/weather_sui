@@ -88,7 +88,6 @@ class ConvLSTM(nn.Module):
 
         self.input_size = constant_params.get("input_size", (35, 100))
         self.input_dim = constant_params.get("input_dim", 3)
-        self.output_dim = constant_params.get("output_dim", 1)
 
         self.regression = constant_params.get("regression", "logistic")
         self.loss_type = constant_params.get("loss_type", "BCE")
@@ -96,17 +95,8 @@ class ConvLSTM(nn.Module):
         self.height, self.width = self.input_size
         self.num_layers = constant_params['num_layers']
         self.window_len = constant_params['window_length']
-
-        self.encoder_hidden_dim = constant_params['encoder_hidden_dim']
-        self.encoder_hidden_dim.insert(0, self.input_dim)
-        self.encoder_hidden_dim.append(self.input_dim)
-
-        self.decoder_hidden_dim = constant_params['decoder_hidden_dim']
-        self.decoder_hidden_dim.insert(0, self.input_dim)
-        self.decoder_hidden_dim.append(self.output_dim)
-
-        self.encoder_kernel_size = constant_params['encoder_kernel_size']
-        self.decoder_kernel_size = constant_params['decoder_kernel_size']
+        self.hidden_dim = constant_params['hidden_dim']
+        self.kernel_size = constant_params['kernel_size']
 
         self.clip = constant_params['clip']
         self.bias = constant_params['bias']
@@ -114,38 +104,29 @@ class ConvLSTM(nn.Module):
         self.peephole_con = constant_params['peephole_con']
         # self.connect_hidden_layers = constant_params['connect_hidden_layers']
 
-        # Defining encoder and decoder blocks
-        self.encoder_cell_list = []
-        self.decoder_cell_list = []
+        # Defining block
+        self.cell_list = []
         for i in range(0, self.num_layers):
-            cur_input_dim_en = self.input_dim if i == 0 else self.encoder_hidden_dim[i - 1]
-            cur_input_dim_de = self.input_dim if i == 0 else self.decoder_hidden_dim[i - 1]
+            cur_input_dim_en = self.input_dim if i == 0 else self.hidden_dim[i - 1]
 
-            self.encoder_cell_list += [self.__create_cell_unit(cur_input_dim_en, idx=i,
-                                                               block_type='encoder')]
-            self.decoder_cell_list += [self.__create_cell_unit(cur_input_dim_de, idx=i,
-                                                               block_type='decoder')]
+            self.cell_list += [self.__create_cell_unit(cur_input_dim_en, idx=i)]
 
-        self.encoder_cell_list = nn.ModuleList(self.encoder_cell_list)
-        self.decoder_cell_list = nn.ModuleList(self.decoder_cell_list)
+        self.cell_list = nn.ModuleList(self.cell_list)
 
         # if stateful latent info will be transferred between batches
-        self.encoder_state = None
-        self.decoder_state = None
+        self.hidden_state = None
 
         self.lr = finetune_params['lr']
         self.set_optimizer()
 
     def reset_per_epoch(self, **kwargs):
         batch_size = kwargs['batch_size']
-        self.encoder_state = self.__init_hidden(batch_size=batch_size, block_type='encoder')
-        self.decoder_state = self.__init_hidden(batch_size=batch_size, block_type='decoder')
+        self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
-    def __init_hidden(self, batch_size, block_type):
-        selected_cell_list = self.encoder_cell_list if block_type == 'encoder' else self.decoder_cell_list
+    def __init_hidden(self, batch_size):
         init_states = []
         for i in range(self.num_layers):
-            init_states.append(selected_cell_list[i].init_hidden(batch_size))
+            init_states.append(self.cell_list[i].init_hidden(batch_size))
         return init_states
 
     def fit(self, X, y, **kwargs):
@@ -163,12 +144,10 @@ class ConvLSTM(nn.Module):
         if self.stateful:
             # Creating new variables for the hidden state, otherwise
             # we'd back-prop through the entire training history
-            self.encoder_state = list(self.__repackage_hidden(self.encoder_state))
-            self.decoder_state = list(self.__repackage_hidden(self.decoder_state))
+            self.hidden_state = list(self.__repackage_hidden(self.hidden_state))
         else:
             batch_size = X.size(0)
-            self.encoder_state = self.__init_hidden(batch_size=batch_size, block_type='encoder')
-            self.decoder_state = self.__init_hidden(batch_size=batch_size, block_type='decoder')
+            self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
         pred = self.forward(X)
 
@@ -209,18 +188,9 @@ class ConvLSTM(nn.Module):
         :param input_tensor: 5-D tensor of shape (b, t, m, n, d)
         :return: (b, t, m, n, d)
         """
-        _, latent_info = self.__forward_block(input_tensor,
-                                              self.encoder_state,
-                                              return_all_layers=True,
-                                              block_type='encoder')
-
-        # make the first state of decoder as the last state of encoder
-        self.decoder_state[0] = latent_info[-1]
-
-        output_tensor, self.decoder_state = self.__forward_block(input_tensor,
-                                                                 self.decoder_state,
-                                                                 return_all_layers=True,
-                                                                 block_type='decoder')
+        output_tensor, self.hidden_state = self.__forward_block(input_tensor,
+                                                                self.hidden_state,
+                                                                return_all_layers=True)
         output = output_tensor[-1]
 
         if self.regression == 'logistic':
@@ -228,8 +198,7 @@ class ConvLSTM(nn.Module):
 
         return output
 
-    def __forward_block(self, input_tensor, hidden_state,
-                        return_all_layers, block_type):
+    def __forward_block(self, input_tensor, hidden_state, return_all_layers):
         """
         :param input_tensor:
         :param hidden_state:
@@ -247,13 +216,8 @@ class ConvLSTM(nn.Module):
             h, c = hidden_state[layer_idx]
             output_inner = []
             for t in range(seq_len):
-                if block_type == 'encoder':
-                    selected_cell_list = self.encoder_cell_list
-                else:
-                    selected_cell_list = self.decoder_cell_list
-
-                h, c = selected_cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :],
-                                                     cur_state=[h, c])
+                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :],
+                                                 cur_state=[h, c])
                 output_inner.append(h)
 
             layer_output = torch.stack(output_inner, dim=1)
@@ -297,19 +261,11 @@ class ConvLSTM(nn.Module):
             labels = labels.view(b * t, d, m * n)
             return criterion(preds, labels)
 
-    def __create_cell_unit(self, cur_input_dim, idx, block_type):
-
-        if block_type == 'encoder':
-            kernel_size = self.encoder_kernel_size
-            hidden_dim = self.encoder_hidden_dim
-        else:
-            kernel_size = self.decoder_kernel_size
-            hidden_dim = self.decoder_hidden_dim
-
+    def __create_cell_unit(self, cur_input_dim, idx):
         cell_unit = ConvLSTM.ConvLSTMCell(input_size=(self.height, self.width),
                                           input_dim=cur_input_dim,
-                                          hidden_dim=hidden_dim[idx],
-                                          kernel_size=kernel_size[idx],
+                                          hidden_dim=self.hidden_dim[idx],
+                                          kernel_size=self.kernel_size[idx],
                                           bias=self.bias,
                                           peephole_con=self.peephole_con)
         return cell_unit

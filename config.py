@@ -25,13 +25,10 @@ class Params:
             'constant_params': {
                 "input_size": (21, 41),
                 "input_dim": 5,
-                "output_dim": 1,
                 'num_layers': 5,
                 'window_length': 4,  # This should be same with batch config
-                'encoder_hidden_dim': [20, 20, 10],
-                'encoder_kernel_size': [5, 5, 5, 3, 3],
-                'decoder_hidden_dim': [10, 10, 10],
-                'decoder_kernel_size': [5, 5, 5, 3, 3],
+                'hidden_dim': [5, 20, 20, 10, 1],
+                'kernel_size': [5, 5, 5, 3, 3],
                 'clip': 5,
                 'bias': True,
                 'stateful': True,
@@ -40,7 +37,7 @@ class Params:
                 "loss_type": "MSE"
             },
             'finetune_params': {
-                "lr": 0.001,
-                'epoch': 15,
+                "lr": 0.00001,
+                'epoch': 50,
             }
         }
