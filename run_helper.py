@@ -1,8 +1,7 @@
 import os
 import pandas as pd
 
-from dataset import GridDataset
-from torch.utils.data import DataLoader
+from batch_generator import BatchGenerator
 from transformers.data_transformer import DataTransformer
 
 
@@ -38,15 +37,9 @@ def dataset_split(grid_data, test_ratio=0.1, val_ratio=0.1):
     return data_dict
 
 
-def create_loader(data_dict, batch_params):
-    dataset_dict = {i: None for i in ['train', 'validation', 'test']}
-    dataset_dict['validation'] = GridDataset(data_dict['validation'], cut_start=False, **batch_params)
-    dataset_dict['train'] = GridDataset(data_dict['train'], cut_start=True, **batch_params)
-    dataset_dict['test'] = GridDataset(data_dict['test'], cut_start=True, **batch_params)
-
-    loader_dict = {i: DataLoader(dataset_dict[i],
-                                 batch_size=batch_params['batch_size'],
-                                 shuffle=False,
-                                 num_workers=1)
-                   for i in ['test', 'validation', 'train']}
-    return loader_dict
+def create_generator(data_dict, batch_params):
+    batch_gen_dict = {i: None for i in ['train', 'validation', 'test']}
+    batch_gen_dict['validation'] = BatchGenerator(data_dict['validation'], cut_start=False, **batch_params)
+    batch_gen_dict['train'] = BatchGenerator(data_dict['train'], cut_start=True, **batch_params)
+    batch_gen_dict['test'] = BatchGenerator(data_dict['test'], cut_start=True, **batch_params)
+    return batch_gen_dict

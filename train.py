@@ -6,7 +6,7 @@ from models.conv_lstm import ConvLSTM
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def trainer(data_loaders, **kwargs):
+def trainer(batch_gens, **kwargs):
     num_epoch = kwargs['finetune_params']['epoch']
     batch_size = kwargs['batch_params']['batch_size']
     model = ConvLSTM(kwargs['constant_params'],
@@ -19,26 +19,27 @@ def trainer(data_loaders, **kwargs):
         print('-*-' * 12)
 
         model.reset_per_epoch(batch_size=batch_size)
-        train_loss = _train(model, data_loaders['train'])
-        val_loss = _evaluate(model, data_loaders['validation'])
+        train_loss = _train(model, batch_gens['train'])
+        val_loss = _evaluate(model, batch_gens['validation'])
 
         print('Training Loss: {:.2f}, '
               'Validation Loss {:.2f}'.format(train_loss, val_loss))
 
     return model
 
-def _train(model, dataloader):
-    batch_size = len(dataloader)
+
+def _train(model, batch_gen):
+    batch_size = len(batch_gen)
     running_loss = 0
-    for grid, label_grid in dataloader:
+    for grid, label_grid in batch_gen.batch_next():
         running_loss += model.fit(grid, label_grid)
     return running_loss / batch_size
 
 
-def _evaluate(model, dataloader):
-    batch_size = len(dataloader)
+def _evaluate(model, batch_gen):
+    batch_size = len(batch_gen)
     running_loss = 0
-    for grid, label_grid in dataloader:
+    for grid, label_grid in batch_gen.batch_next():
         grid = grid.permute(0, 1, 4, 2, 3)
         label_grid = label_grid.permute(0, 1, 4, 2, 3).cpu().numpy()
 

@@ -1,7 +1,7 @@
 import pickle
 
 from config import Params
-from run_helper import get_data, dataset_split, create_loader
+from run_helper import get_data, dataset_split, create_generator
 from train import trainer
 
 
@@ -13,8 +13,9 @@ def run():
                               params.data_params['test_ratio'],
                               params.data_params['val_ratio'])
 
-    data_loaders = create_loader(data_dict, params.model_params['batch_params'])
-    trained_model = trainer(data_loaders, **params.model_params)
+    batch_gens = create_generator(data_dict, params.model_params['batch_params'])
+
+    trained_model = trainer(batch_gens, **params.model_params)
 
     print('Training finished, saving the model')
     model_file = open('results/conv_lstm.pkl', 'wb')

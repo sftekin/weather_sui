@@ -19,14 +19,15 @@ class Params:
 
         self.model_params = {
             'batch_params': {
-                'batch_size': 4,
-                'sequence_len': 4,
+                'batch_size': 1,
+                'sequence_len': 96,
+                'output_feature': [0]
             },
             'constant_params': {
-                "input_size": (21, 41),
-                "input_dim": 5,
+                'input_size': (21, 41),
+                'input_dim': 5,
                 'num_layers': 5,
-                'window_length': 4,  # This should be same with batch config
+                'window_length': 32,  # This should be same with batch config
                 'hidden_dim': [5, 20, 20, 10, 1],
                 'kernel_size': [5, 5, 5, 3, 3],
                 'clip': 5,
