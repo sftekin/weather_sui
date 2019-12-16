@@ -40,6 +40,8 @@ class BatchGenerator:
         :param feature_idx: list of label columns, e.g [0] for temperature
         :return: x, y tensor in shape of (b, t, m, n, d)
         """
+        # TODO: Add step-size I dont want it to be seq_len always
+        # TODO: shift y value n times and prediction and train mode should be specified
         for n in range(0, self.n_time_step, self.seq_len):
             x = self.grid[:, n:n+self.seq_len]
 
