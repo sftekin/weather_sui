@@ -101,7 +101,7 @@ class SMA(nn.Module):
             window = window[self.window_len:]
         else:
             # middle
-            window = window[self.window_len//4:self.window_len]
+            window = window[self.window_len//4: self.window_len//4 + self.window_len]
 
         window = torch.from_numpy(window).float()
         if self.train_weights:
