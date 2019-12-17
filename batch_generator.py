@@ -4,7 +4,9 @@ import torch
 
 class BatchGenerator:
     def __init__(self, grid, transform=None, cut_start=True, **kwargs):
-        self.output_feature = kwargs['output_feature']
+        self.output_feature = kwargs['output_feature']  # list of label columns, e.g [0] for temperature
+        self.input_feature = kwargs['input_feature']  # list of label columns, e.g [0] for temperature
+        self.output_frame = kwargs['output_frame']
         self.batch_size = kwargs['batch_size']
         self.seq_len = kwargs['sequence_len']
         self.step_size = kwargs['step_size']
@@ -34,6 +36,7 @@ class BatchGenerator:
 
         # Reshape into batch_size rows
         data = data.reshape((self.batch_size, -1, m, n, d))
+        data = data[:, :, :, :, self.input_feature]
         return data
 
     def __len__(self):
@@ -41,7 +44,6 @@ class BatchGenerator:
 
     def batch_next(self):
         """
-        :param feature_idx: list of label columns, e.g [0] for temperature
         :return: x, y tensor in shape of (b, t, m, n, d)
         """
         if self.mode == 'train':
@@ -57,8 +59,9 @@ class BatchGenerator:
                 y = self.grid[:, y_idx:y_idx+self.seq_len]
 
                 x = torch.from_numpy(x)
-                y = torch.from_numpy(y[:, :, :, :, self.output_feature])
-
+                y = torch.from_numpy(y)
+                y = y[:, :, :, :, self.output_feature]
+                y = y[:, self.output_frame]
                 yield x, y
 
     def _pred_loop(self):

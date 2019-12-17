@@ -174,16 +174,6 @@ class ConvLSTM(nn.Module):
         pred = self.forward(X)
         return pred.detach().cpu().numpy()
 
-    def score(self, labels, preds):
-        """
-        Given labels and preds arrays, compute loss
-        :param labels: np array
-        :param preds: np array
-        :return: loss (float)
-        """
-        loss = self.compute_loss(torch.Tensor(labels), torch.Tensor(preds))
-        return loss.numpy()
-
     def forward(self, input_tensor):
         """
         :param input_tensor: 5-D tensor of shape (b, t, m, n, d)
@@ -261,6 +251,16 @@ class ConvLSTM(nn.Module):
             preds = preds.view(b * t, d, m * n)
             labels = labels.view(b * t, d, m * n)
             return criterion(preds, labels)
+
+    def score(self, labels, preds):
+        """
+        Given labels and preds arrays, compute loss
+        :param labels: np array
+        :param preds: np array
+        :return: loss (float)
+        """
+        loss = self.compute_loss(torch.Tensor(labels), torch.Tensor(preds))
+        return loss.numpy()
 
     def __create_cell_unit(self, cur_input_dim, idx):
         cell_unit = ConvLSTM.ConvLSTMCell(input_size=(self.height, self.width),

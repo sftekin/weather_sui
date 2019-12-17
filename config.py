@@ -17,31 +17,81 @@ class Params:
             'val_ratio': 0.1,
         }
 
+        self.run_params = {
+            'model_list': ['CONVLSTM', 'EMA', 'SMA']
+        }
+
         self.model_params = {
-            'batch_params': {
-                'batch_size': 1,
-                'sequence_len': 96,
-                'output_feature': [0],
-                'step_size': 96,  # step difference between batches
-                'mode': 'train',
-                'shift_size': 1  # distance btw y and x, only train mode
+            'CONVLSTM': {
+                'batch_params': {
+                    'batch_size': 1,
+                    'sequence_len': 96,
+                    'output_feature': [0],
+                    'output_frame': list(range(96)),
+                    'input_feature': [0, 1, 2, 3, 4],
+                    'step_size': 96,  # step difference between batches
+                    'mode': 'train',
+                    'shift_size': 1  # distance btw y and x, only train mode
+                },
+                'constant_params': {
+                    'input_size': (21, 41),
+                    'input_dim': 5,
+                    'num_layers': 5,
+                    'window_length': 32,  # This should be same with batch config
+                    'hidden_dim': [5, 20, 20, 10, 1],
+                    'kernel_size': [5, 5, 5, 3, 3],
+                    'clip': 5,
+                    'bias': True,
+                    'stateful': True,
+                    'peephole_con': False,
+                    "regression": "regression",
+                    "loss_type": "MSE"
+                },
+                'finetune_params': {
+                    "lr": 0.00001,
+                    'epoch': 50,
+                }
             },
-            'constant_params': {
-                'input_size': (21, 41),
-                'input_dim': 5,
-                'num_layers': 5,
-                'window_length': 32,  # This should be same with batch config
-                'hidden_dim': [5, 20, 20, 10, 1],
-                'kernel_size': [5, 5, 5, 3, 3],
-                'clip': 5,
-                'bias': True,
-                'stateful': True,
-                'peephole_con': False,
-                "regression": "regression",
-                "loss_type": "MSE"
+            'EMA': {
+                'batch_params': {
+                    'batch_size': 1,
+                    'sequence_len': 240,
+                    'output_feature': [0],
+                    'input_feature': [0],
+                    'output_frame': [-1],
+                    'step_size': 240,  # step difference between batches
+                    'mode': 'train',
+                    'shift_size': 1  # distance btw y and x, only train mode
+                },
+                'constant_params': {
+                    'window_len': 240
+                },
+                'finetune_params': {
+                    'mu': .1,
+                    'epoch': 50
+                }
             },
-            'finetune_params': {
-                "lr": 0.00001,
-                'epoch': 50,
+            'SMA': {
+                'batch_params': {
+                    'batch_size': 1,
+                    'sequence_len': 240,
+                    'output_feature': [0],
+                    'input_feature': [0],
+                    'output_frame': [-1],
+                    'step_size': 240,  # step difference between batches
+                    'mode': 'train',
+                    'shift_size': 1  # distance btw y and x, only train mode
+                },
+                'constant_params': {
+                    'window_len': 240,
+                    'train_weights': True,
+                    'attention_to': 'right',
+                    'init_dist': 'kaiser'
+                },
+                'finetune_params': {
+                    "lr": 0.001,
+                    'epoch': 30,
+
+                }
             }
         }

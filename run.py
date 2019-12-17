@@ -13,9 +13,12 @@ def run():
                               params.data_params['test_ratio'],
                               params.data_params['val_ratio'])
 
-    batch_gens = create_generator(data_dict, params.model_params['batch_params'])
+    batch_gens = create_generator(data_dict, params.model_params['EMA']['batch_params'])
 
-    trained_model = trainer(batch_gens, **params.model_params)
+    # for batch_idx, (x, y) in enumerate(batch_gens['train'].batch_next()):
+    #     print(batch_idx, x.shape)
+
+    trained_model = trainer(batch_gens, **params.model_params['EMA'])
 
     print('Training finished, saving the model')
     model_file = open('results/conv_lstm.pkl', 'wb')

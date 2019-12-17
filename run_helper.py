@@ -14,7 +14,7 @@ def get_data(data_params):
 
 
 def _read_weather_data(data_path, save_path):
-    if os.path.isfile(data_path):
+    if os.path.isfile(save_path):
         print('Loading data from pickle')
         data = pd.read_pickle(save_path)
     else:
