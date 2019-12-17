@@ -1,7 +1,9 @@
 import torch
+import numpy as np
 import torch.nn as nn
 
 from scipy import signal
+from torch.autograd import Variable
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -17,13 +19,26 @@ class SMA(nn.Module):
         self.weight = self.__init_weight()
 
     def __init_weight(self):
-        # TODO add left right middle attention
+        filter_len = 2 * self.window_len
         if self.init_dist == 'gaussian':
-            weight = None
+            window = signal.gaussian(filter_len, std=10)
         elif self.init_dist == 'kaiser':
-            weight = None
+            window = signal.kaiser(filter_len, beta=14)
         else:
-            uniform = None
+            # uniform
+            window = np.ones(filter_len)
 
+        if self.attention_to == 'right':
+            window = window[:self.window_len]
+        elif self.attention_to == 'left':
+            window = window[self.window_len:]
+        else:
+            # middle
+            window = window[self.window_len//4:self.window_len]
+
+        window = torch.from_numpy(window)
+        if self.train_weight:
+            window = Variable(window).to(device)
+        return window
 
 

@@ -21,7 +21,10 @@ class Params:
             'batch_params': {
                 'batch_size': 1,
                 'sequence_len': 96,
-                'output_feature': [0]
+                'output_feature': [0],
+                'step_size': 96,  # step difference between batches
+                'mode': 'train',
+                'shift_size': 1  # distance btw y and x, only train mode
             },
             'constant_params': {
                 'input_size': (21, 41),

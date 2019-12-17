@@ -5,8 +5,12 @@ import torch
 class BatchGenerator:
     def __init__(self, grid, transform=None, cut_start=True, **kwargs):
         self.output_feature = kwargs['output_feature']
-        self.seq_len = kwargs['sequence_len']
         self.batch_size = kwargs['batch_size']
+        self.seq_len = kwargs['sequence_len']
+        self.step_size = kwargs['step_size']
+        self.mode = kwargs['mode']
+        self.shift_size = kwargs['shift_size']
+
         self.transform = transform
         self.cut_start = cut_start
         self.grid = self.configure_data(grid)
@@ -40,18 +44,26 @@ class BatchGenerator:
         :param feature_idx: list of label columns, e.g [0] for temperature
         :return: x, y tensor in shape of (b, t, m, n, d)
         """
-        # TODO: Add step-size I dont want it to be seq_len always
-        # TODO: shift y value n times and prediction and train mode should be specified
-        for n in range(0, self.n_time_step, self.seq_len):
-            x = self.grid[:, n:n+self.seq_len]
+        if self.mode == 'train':
+            yield from self._train_loop()
+        else:
+            yield from self._pred_loop()
 
-            y = np.zeros_like(x)
-            try:
-                y[:, :-1], y[:, -1] = x[:, 1:], self.grid[:, n+self.seq_len]
-            except IndexError:
-                y[:, :-1], y[:, -1] = x[:, 1:], self.grid[:, 0]
+    def _train_loop(self):
+        for n in range(0, self.n_time_step, self.step_size):
+            y_idx = n + self.shift_size
+            if y_idx+self.seq_len < self.n_time_step:
+                x = self.grid[:, n:n+self.seq_len]
+                y = self.grid[:, y_idx:y_idx+self.seq_len]
 
-            x = torch.from_numpy(x)
-            y = torch.from_numpy(y[:, :, :, :, self.output_feature])
+                x = torch.from_numpy(x)
+                y = torch.from_numpy(y[:, :, :, :, self.output_feature])
 
-            yield x, y
+                yield x, y
+
+    def _pred_loop(self):
+        for n in range(0, self.n_time_step, self.step_size):
+            if n + self.seq_len < self.n_time_step:
+                x = self.grid[:, n:n+self.seq_len]
+                yield x
+
