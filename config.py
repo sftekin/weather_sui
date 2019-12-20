@@ -59,7 +59,7 @@ class Params:
                     'output_feature': [0],
                     'input_feature': [0],
                     'output_frame': [-1],
-                    'step_size': 240,  # step difference between batches
+                    'step_size': 1,  # step difference between batches
                     'mode': 'train',
                     'shift_size': 1  # distance btw y and x, only train mode
                 },
@@ -85,7 +85,7 @@ class Params:
                 'constant_params': {
                     'window_len': 240,
                     'train_weights': True,
-                    'attention_to': 'middle',
+                    'attention_to': 'right',
                     'init_dist': 'kaiser'
                 },
                 'finetune_params': {
