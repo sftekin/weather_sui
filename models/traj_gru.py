@@ -188,7 +188,111 @@ class EncoderBlock(nn.Module):
             f = self.conv_kernel
             s = self.conv_stride
             p = self.conv_padding
-            cur_dim = ((h-f+2*p)/s+1, (w-f+2*p)/s+1)
+            cur_dim = ((h - f + 2*p)/s + 1, (w - f + 2*p)/s + 1)
+            input_sizes.append(cur_dim)
+        return input_sizes
+
+
+class DecoderBlock(nn.Module):
+    def __init__(self, **kwargs):
+        super(DecoderBlock, self).__init__()
+
+        # decoder conf
+        self.input_size = kwargs['input_size']
+        self.input_dim = kwargs['input_dim']
+        self.num_layers = kwargs['num_layers']
+
+        # up-sample conf
+        self.conv_dims = kwargs['conv_dims']
+        self.conv_kernel = kwargs['conv_kernel']
+        self.conv_stride = kwargs['conv_stride']
+        self.conv_padding = self.conv_kernel // 2
+
+        # traj-gru conf
+        self.gru_input_sizes = self.__calc_input_size()
+        self.gru_dims = kwargs['gru_dims']
+        self.gru_kernels = kwargs['gru_kernels']
+        self.connection = kwargs['connection']
+        self.bias = kwargs['bias']
+
+        # output convs conf
+        self.output_dim = kwargs['output_dim']
+
+        self.cell_list = []
+        for i in range(self.num_layers):
+            cur_input_dim = self.input_dim if i == 0 else self.conv_dims[i-1]
+            cur_input_size = self.input_size if i == 0 else self.gru_input_sizes[i-1]
+            self.cell_list += [
+                TrajGRUCell(input_size=cur_input_size,
+                            input_dim=cur_input_dim,
+                            hidden_dim=self.gru_dims[i],
+                            kernel_size=self.gru_kernels[i],
+                            connection=self.connection,
+                            bias=self.bias),
+
+                nn.ConvTranspose2d(in_channels=self.gru_dims[i],
+                                   out_channels=self.conv_dims[i],
+                                   kernel_size=self.conv_kernel,
+                                   stride=self.conv_stride,
+                                   padding=self.conv_padding),
+            ]
+        self.cell_list = nn.ModuleList(self.cell_list)
+
+        self.output_convs = nn.Sequential(
+            nn.Conv2d(in_channels=self.conv_dims[-1],
+                      out_channels=self.conv_dims[-1],
+                      kernel_size=self.conv_kernel,
+                      stride=1,
+                      padding=self.conv_kernel // 2),
+            nn.Conv2d(in_channels=self.conv_dims[-1],
+                      out_channels=self.output_dim,
+                      kernel_size=1,
+                      stride=1)
+        )
+
+    def init_memory(self, batch_size):
+        """
+        Initialise every memory element hidden state
+        :param batch_size: int
+        :return: list of tensors (b, d, m, n)
+        """
+        init_states = []
+        # Only iterate even indexes
+        for i in range(0, 2*self.num_layers, 2):
+            init_states.append(self.cell_list[i].init_hidden(batch_size))
+        return init_states
+
+    def forward(self, input_tensor, hidden_states):
+        """
+        :param input_tensor: (B, D, M, N)
+        :param hidden_states: (B, D, M, N)
+        :return:(B, D', M', N') down-sampled tensor
+        """
+        layer_state_list = []
+
+        cur_layer_input = input_tensor
+        for layer_idx in range(self.num_layers):
+            # Down-sample
+            conv_output = self.cell_list[layer_idx](cur_layer_input)
+
+            # Memory element
+            cur_layer_input = self.cell_list[layer_idx+1](conv_output,
+                                                          hidden_states[layer_idx])
+            layer_state_list.append(cur_layer_input)
+
+        output = self.output_convs(cur_layer_input)
+
+        return output, layer_state_list
+
+    def __calc_input_size(self):
+        input_sizes = []
+        cur_dim = self.input_size
+        for i in range(self.num_layers):
+            h, w = cur_dim
+            f = self.conv_kernel
+            s = self.conv_stride
+            p = self.conv_padding
+            cur_dim = ((h-1)*s - 2*p + f, (w-1)*s - 2*p + f)
             input_sizes.append(cur_dim)
         return input_sizes
 
@@ -211,11 +315,23 @@ if __name__ == '__main__':
                                  gru_dims=[32, 96],
                                  gru_kernels=[5, 3],
                                  connection=5,
-                                 bias=True
-                                 )
+                                 bias=True)
+
+    decoder_block = DecoderBlock(input_size=(6, 11),
+                                 input_dim=96,
+                                 output_dim=3,
+                                 num_layers=2,
+                                 conv_dims=[64, 16],
+                                 conv_kernel=3,
+                                 conv_stride=2,
+                                 gru_dims=[96, 32],
+                                 gru_kernels=[3, 3],
+                                 connection=5,
+                                 bias=True)
 
     # print(traj_gru)
     # print(encoder_block)
+    print(decoder_block)
 
     # from torchvision import transforms
     # from PIL import Image
