@@ -297,6 +297,23 @@ class DecoderBlock(nn.Module):
         return input_sizes
 
 
+class TrajGRU(nn.Module):
+    def __init__(self, **kwargs):
+        super(TrajGRU, self).__init__()
+
+        self.encoder_count = kwargs['encoder_count']
+        self.decoder_count = kwargs['decoder_count']
+
+        self.encoder_conf = kwargs['encoder_conf']
+        self.decoder_conf = kwargs['decoder_conf']
+
+        self.encoder = []
+        for i in range(self.encoder_count):
+            self.encoder.append(
+                EncoderBlock()
+            )
+
+
 if __name__ == '__main__':
 
     traj_gru = TrajGRUCell(input_size=(21, 41),
