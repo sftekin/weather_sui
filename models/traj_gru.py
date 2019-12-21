@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
 from torch.autograd import Variable
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -163,19 +164,20 @@ class EncoderBlock(nn.Module):
     def forward(self, input_tensor, hidden_states):
         """
         :param input_tensor: (B, D, M, N)
-        :param hidden_states: (B, D, M, N)
-        :return:(B, D', M', N') down-sampled tensor
+        :param hidden_states: [(B, D, M, N), ..., (B, D, M, N)]
+        :return:[(B, D', M', N'), ..., (B, D', M', N')] list of down-sampled tensors
         """
         layer_state_list = []
 
         cur_layer_input = input_tensor
         for layer_idx in range(self.num_layers):
             # Down-sample
-            conv_output = self.cell_list[layer_idx](cur_layer_input)
+            conv_output = self.cell_list[2*layer_idx](cur_layer_input)
 
             # Memory element
-            cur_layer_input = self.cell_list[layer_idx+1](conv_output,
-                                                          hidden_states[layer_idx])
+            cur_layer_input = self.cell_list[2*layer_idx+1](conv_output,
+                                                            hidden_states[layer_idx])
+            # Store states
             layer_state_list.append(cur_layer_input)
 
         return layer_state_list
@@ -264,21 +266,23 @@ class DecoderBlock(nn.Module):
 
     def forward(self, input_tensor, hidden_states):
         """
-        :param input_tensor: (B, D, M, N)
-        :param hidden_states: (B, D, M, N)
-        :return:(B, D', M', N') down-sampled tensor
+        :param input_tensor: (B, D', M', N')
+        :param hidden_states: [(B, D', M', N'), ..., (B, D', M', N')]
+        :return:(B, D', M, N), [(B, D', M', N'), ..., (B, D', M', N')]
         """
         layer_state_list = []
 
         cur_layer_input = input_tensor
         for layer_idx in range(self.num_layers):
-            # Down-sample
-            conv_output = self.cell_list[layer_idx](cur_layer_input)
-
             # Memory element
-            cur_layer_input = self.cell_list[layer_idx+1](conv_output,
-                                                          hidden_states[layer_idx])
-            layer_state_list.append(cur_layer_input)
+            state_output = self.cell_list[2*layer_idx](cur_layer_input,
+                                                       hidden_states[layer_idx])
+
+            # Up-sample
+            cur_layer_input = self.cell_list[2*layer_idx+1](state_output)
+
+            # store hidden states
+            layer_state_list.append(state_output)
 
         output = self.output_convs(cur_layer_input)
 
@@ -307,11 +311,147 @@ class TrajGRU(nn.Module):
         self.encoder_conf = kwargs['encoder_conf']
         self.decoder_conf = kwargs['decoder_conf']
 
+        self.regression = kwargs.get("regression", "logistic")
+        self.loss_type = kwargs.get("loss_type", "BCE")
+
+        self.stateful = kwargs['stateful']
+        self.clip = kwargs['clip']
+        self.lr = kwargs['lr']
+        self.set_optimizer()
+
         self.encoder = []
         for i in range(self.encoder_count):
             self.encoder.append(
-                EncoderBlock()
+                EncoderBlock(**self.encoder_conf)
             )
+        self.encoder = nn.ModuleList(self.encoder)
+
+        self.decoder = []
+        for i in range(self.decoder_count):
+            self.decoder.append(
+                DecoderBlock(**self.decoder_conf)
+            )
+        self.decoder = nn.ModuleList(self.decoder)
+
+        # if stateful latent info will be transferred between batches
+        self.hidden_state = None
+
+    def fit(self, X, y, **kwargs):
+        """
+        :param X: Tensor, (b, t, m, n, d)
+        :param y: Tensor, (b, t, m, n, d)
+        :param kwargs:
+        :return: None
+        """
+        X, y = Variable(X).float().to(device), Variable(y).float().to(device)
+        # (b, t, m, n, d) -> (b, t, d, m, n)
+        X = X.permute(0, 1, 4, 2, 3)
+        y = y.permute(0, 1, 4, 2, 3)
+
+        if self.stateful:
+            # Creating new variables for the hidden state, otherwise
+            # we'd back-prop through the entire training history
+            self.hidden_state = list(self.__repackage_hidden(self.hidden_state))
+        else:
+            batch_size = X.size(0)
+            self.hidden_state = self.__init_hidden(batch_size=batch_size)
+
+        pred, self.hidden_state = self.forward(X)
+
+        self.optimizer.zero_grad()
+        loss = self.compute_loss(y, pred)
+        loss.backward()
+
+        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+        nn.utils.clip_grad_norm_(self.parameters(), self.clip)
+
+        # take step in classifier's optimizer
+        self.optimizer.step()
+
+        torch.cuda.empty_cache()
+        return loss.detach().cpu().numpy()
+
+    def predict(self, X):
+        """
+        :param X: Tensor, (b, t, m, n, d)
+        :return: numpy array, b, t, m, n, d)
+        """
+        X = Variable(X).float().to(device)
+        X = X.permute(0, 1, 4, 2, 3)
+
+        pred = self.forward(X)
+        return pred.detach().cpu().numpy()
+
+    def forward(self, input_tensor, hidden_states):
+        """
+        :param input_tensor: (B, T, D, M, N)
+        :param hidden_states: [(B, D, M, N), ..., (B, D, M, N)]
+        :return: (B, T', D', M, N)
+        """
+        # forward encoder block
+        seq_len = input_tensor.shape[1]
+        cur_states = hidden_states
+        for t in range(seq_len):
+            # since each block corresponds to each time-step
+            cur_states = self.encoder[t](input_tensor[:, t], cur_states)
+
+        # forward decoder block
+        block_output_list = []
+        decoder_input = torch.zeros_like(hidden_states[-1])
+        for i in range(self.decoder_count):
+            output, cur_states = self.decoder[i](decoder_input, cur_states)
+            block_output_list.append(output)
+
+        final_output = torch.stack(block_output_list, dim=1)
+
+        return final_output, cur_states
+
+    def reset_per_epoch(self, **kwargs):
+        batch_size = kwargs['batch_size']
+        self.hidden_state = self.__init_hidden(batch_size=batch_size)
+
+    def set_optimizer(self):
+        self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
+
+    def compute_loss(self, labels, preds):
+        """
+        Computes the loss given labels and preds
+        :param labels: tensor
+        :param preds: tensor
+        :return: loss (float)
+        """
+        b, t, d, m, n = preds.shape
+        if self.loss_type == "MSE":
+            criterion = nn.MSELoss()
+            loss = criterion(preds, labels)
+            return loss.mean()
+        elif self.loss_type == "BCE":
+            criterion = nn.BCELoss()
+            preds = preds.view(b * t, d, m * n)
+            labels = labels.view(b * t, d, m * n)
+            return criterion(preds, labels)
+
+    def score(self, labels, preds):
+        """
+        Given labels and preds arrays, compute loss
+        :param labels: np array
+        :param preds: np array
+        :return: loss (float)
+        """
+        loss = self.compute_loss(torch.Tensor(labels), torch.Tensor(preds))
+        return loss.numpy()
+
+    def __init_hidden(self, batch_size):
+        # only the first block hidden is needed
+        hidden_list = self.encoder[0].init_memory(batch_size)
+        return hidden_list
+
+    def __repackage_hidden(self, h):
+        """Wraps hidden states in new Tensors, to detach them from their history."""
+        if isinstance(h, torch.Tensor):
+            return h.detach()
+        else:
+            return tuple(self.__repackage_hidden(v) for v in h)
 
 
 if __name__ == '__main__':
