@@ -6,7 +6,7 @@ from torch.autograd import Variable
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-class ConvGRU(nn.Module):
+class TrajGRUCell(nn.Module):
 
     def __init__(self, input_size, input_dim, hidden_dim,
                  kernel_size, bias, connection):
@@ -17,7 +17,7 @@ class ConvGRU(nn.Module):
         :param kernel_size: (int, int) size of the convolution kernel
         :param bias: bool weather or not to add the bias
         """
-        super(ConvGRU, self).__init__()
+        super(TrajGRUCell, self).__init__()
 
         self.height, self.width = input_size
         self.input_dim = input_dim
@@ -53,11 +53,11 @@ class ConvGRU(nn.Module):
 
         x_z, x_r, x_h = torch.split(input_conv, self.hidden_dim, dim=1)
 
-        for l, warped in enumerate(self.__warp(x, h_prev)):
-            if l == 0:
-                traj_tensor = self.projecting_channels[l](warped)
+        for local_link, warped in enumerate(self.__warp(x, h_prev)):
+            if local_link == 0:
+                traj_tensor = self.projecting_channels[local_link](warped)
             else:
-                traj_tensor += self.projecting_channels[l](warped)
+                traj_tensor += self.projecting_channels[local_link](warped)
 
         h_z, h_r, h_h = torch.split(traj_tensor, self.hidden_dim, dim=1)
 
@@ -96,22 +96,106 @@ class ConvGRU(nn.Module):
     def init_hidden(self, batch_size):
         """
         # Create new tensor with sizes n_layers x batch_size x n_hidden,
-        # initialized to zero, for hidden state of LSTM
+        # initialized to zero, for hidden state of GRU
         :param batch_size: int
         :return:
         """
-        hidden = Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width)).to(device)
+        hidden = Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width))
+        hidden = hidden.to(device)
         return hidden
+
+
+class EncoderBlock(nn.Module):
+
+    def __init__(self, **kwargs):
+        super(EncoderBlock, self).__init__()
+        # encoder conf
+        self.input_size = kwargs['input_size']
+        self.input_dim = kwargs['input_dim']
+        self.num_layers = kwargs['num_layers']
+
+        # down-sample conf
+        self.conv_dims = kwargs['conv_dims']
+        self.conv_kernel = kwargs['conv_kernel']
+        self.conv_stride = kwargs['conv_stride']
+        self.conv_padding = self.conv_kernel // 2
+
+        # traj-gru conf
+        self.gru_input_sizes = self.__calc_input_size()
+        self.gru_dims = kwargs['gru_dims']
+        self.gru_kernels = kwargs['gru_kernels']
+        self.connection = kwargs['connection']
+        self.bias = kwargs['bias']
+
+        self.cell_list = []
+        for i in range(self.num_layers):
+            cur_input_dim = self.input_dim if i == 0 else self.conv_dims[i-1]
+            self.cell_list += [
+                nn.Conv2d(in_channels=cur_input_dim,
+                          out_channels=self.conv_dims[i],
+                          kernel_size=self.conv_kernel,
+                          stride=self.conv_stride,
+                          padding=self.conv_padding),
+
+                TrajGRUCell(input_size=self.gru_input_sizes[i],
+                            input_dim=self.conv_dims[i],
+                            hidden_dim=self.gru_dims[i],
+                            kernel_size=self.gru_kernels[i],
+                            connection=self.connection,
+                            bias=self.bias)
+            ]
+        self.cell_list = nn.ModuleList(self.cell_list)
+
+    def init_memory(self, batch_size):
+        init_states = []
+        # Only iterate odd indexes
+        for i in range(1, 2*self.num_layers+1, 2):
+            init_states.append(self.cell_list[i].init_hidden(batch_size))
+        return init_states
+
+    def forward(self, input_tensor, hidden_states):
+        """
+        :param input_tensor: (B, T, D, M, N)
+        :param hidden_states: (B, T, )
+        :return:
+        """
+
+    def __calc_input_size(self):
+        input_sizes = []
+        cur_dim = self.input_size
+        for i in range(self.num_layers):
+            h, w = cur_dim
+            f = self.conv_kernel
+            s = self.conv_stride
+            p = self.conv_padding
+            cur_dim = ((h-f+2*p)/s+1, (w-f+2*p)/s+1)
+            input_sizes.append(cur_dim)
+        return input_sizes
 
 
 if __name__ == '__main__':
 
-    conv_gru = ConvGRU(input_size=(20, 40),
-                       input_dim=5,
-                       hidden_dim=5,
-                       kernel_size=5,
-                       connection=17,
-                       bias=True)
+    traj_gru = TrajGRUCell(input_size=(21, 41),
+                           input_dim=5,
+                           hidden_dim=5,
+                           kernel_size=5,
+                           connection=17,
+                           bias=True)
+
+    encoder_block = EncoderBlock(input_size=(21, 41),
+                                 input_dim=5,
+                                 num_layers=2,
+                                 conv_dims=[16, 64],
+                                 conv_kernel=3,
+                                 conv_stride=2,
+                                 gru_dims=[32, 96],
+                                 gru_kernels=[5, 3],
+                                 connection=5,
+                                 bias=True
+                                 )
+
+    # print(traj_gru)
+    # print(encoder_block)
 
     # from torchvision import transforms
     # from PIL import Image
