@@ -7,7 +7,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class TrajGRUCell(nn.Module):
-
     def __init__(self, input_size, input_dim, hidden_dim,
                  kernel_size, bias, connection):
         """
@@ -48,7 +47,11 @@ class TrajGRUCell(nn.Module):
                                  padding=1)
 
     def forward(self, x, h_prev):
-
+        """
+        :param x: (b, d, m, n)
+        :param h_prev: (b, d, m, n)
+        :return: (b, d, m, n)
+        """
         input_conv = self.conv_input(x)
 
         x_z, x_r, x_h = torch.split(input_conv, self.hidden_dim, dim=1)
@@ -98,7 +101,7 @@ class TrajGRUCell(nn.Module):
         # Create new tensor with sizes n_layers x batch_size x n_hidden,
         # initialized to zero, for hidden state of GRU
         :param batch_size: int
-        :return:
+        :return:(b, d, m, n) tensor
         """
         hidden = Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width))
         hidden = hidden.to(device)
@@ -106,7 +109,6 @@ class TrajGRUCell(nn.Module):
 
 
 class EncoderBlock(nn.Module):
-
     def __init__(self, **kwargs):
         super(EncoderBlock, self).__init__()
         # encoder conf
@@ -147,6 +149,11 @@ class EncoderBlock(nn.Module):
         self.cell_list = nn.ModuleList(self.cell_list)
 
     def init_memory(self, batch_size):
+        """
+        Initialise every memory element hidden state
+        :param batch_size: int
+        :return: list of tensors (b, d, m, n)
+        """
         init_states = []
         # Only iterate odd indexes
         for i in range(1, 2*self.num_layers+1, 2):
@@ -155,10 +162,23 @@ class EncoderBlock(nn.Module):
 
     def forward(self, input_tensor, hidden_states):
         """
-        :param input_tensor: (B, T, D, M, N)
-        :param hidden_states: (B, T, )
-        :return:
+        :param input_tensor: (B, D, M, N)
+        :param hidden_states: (B, D, M, N)
+        :return:(B, D', M', N') down-sampled tensor
         """
+        layer_state_list = []
+
+        cur_layer_input = input_tensor
+        for layer_idx in range(self.num_layers):
+            # Down-sample
+            conv_output = self.cell_list[layer_idx](cur_layer_input)
+
+            # Memory element
+            cur_layer_input = self.cell_list[layer_idx+1](conv_output,
+                                                          hidden_states[layer_idx])
+            layer_state_list.append(cur_layer_input)
+
+        return layer_state_list
 
     def __calc_input_size(self):
         input_sizes = []
