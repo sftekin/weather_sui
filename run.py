@@ -13,16 +13,16 @@ def run():
                               params.data_params['test_ratio'],
                               params.data_params['val_ratio'])
 
-    batch_gens = create_generator(data_dict, params.model_params['CONVLSTM']['batch_params'])
+    batch_gens = create_generator(data_dict, params.model_params['TRAJGRU']['batch_params'])
 
-    for batch_idx, (x, y) in enumerate(batch_gens['train'].batch_next()):
-        print(batch_idx, x.shape)
+    # for batch_idx, (x, y) in enumerate(batch_gens['train'].batch_next()):
+    #     print(batch_idx, x.shape)
 
-    # trained_model = trainer(batch_gens, **params.model_params['CONVLSTM'])
-    #
-    # print('Training finished, saving the model')
-    # model_file = open('results/conv_lstm.pkl', 'wb')
-    # pickle.dump(trained_model, model_file)
+    trained_model = trainer(batch_gens, **params.model_params['TRAJGRU'])
+
+    print('Training finished, saving the model')
+    model_file = open('results/conv_lstm.pkl', 'wb')
+    pickle.dump(trained_model, model_file)
 
 
 if __name__ == '__main__':

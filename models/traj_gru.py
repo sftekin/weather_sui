@@ -45,7 +45,7 @@ class TrajGRUCell(nn.Module):
         self.sub_net = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,
                                  out_channels=2 * self.connection,
                                  kernel_size=5,
-                                 padding=1)
+                                 padding=2)
 
     def forward(self, x, h_prev):
         """
@@ -132,7 +132,7 @@ class EncoderBlock(nn.Module):
 
         self.cell_list = []
         for i in range(self.num_layers):
-            cur_input_dim = self.input_dim if i == 0 else self.conv_dims[i-1]
+            cur_input_dim = self.input_dim if i == 0 else self.gru_dims[i-1]
             self.cell_list += [
                 nn.Conv2d(in_channels=cur_input_dim,
                           out_channels=self.conv_dims[i],
@@ -190,7 +190,7 @@ class EncoderBlock(nn.Module):
             f = self.conv_kernel
             s = self.conv_stride
             p = self.conv_padding
-            cur_dim = ((h - f + 2*p)/s + 1, (w - f + 2*p)/s + 1)
+            cur_dim = (int((h - f + 2*p)/s + 1), int((w - f + 2*p)/s + 1))
             input_sizes.append(cur_dim)
         return input_sizes
 
@@ -272,17 +272,19 @@ class DecoderBlock(nn.Module):
         """
         layer_state_list = []
 
+        # Since decoder has reverse order
+        len_states = len(hidden_states) - 1
         cur_layer_input = input_tensor
         for layer_idx in range(self.num_layers):
             # Memory element
             state_output = self.cell_list[2*layer_idx](cur_layer_input,
-                                                       hidden_states[layer_idx])
+                                                       hidden_states[len_states - layer_idx])
 
             # Up-sample
             cur_layer_input = self.cell_list[2*layer_idx+1](state_output)
 
-            # store hidden states
-            layer_state_list.append(state_output)
+            # store hidden states and decoder has reverse order
+            layer_state_list.insert(0, state_output)
 
         output = self.output_convs(cur_layer_input)
 
@@ -296,7 +298,7 @@ class DecoderBlock(nn.Module):
             f = self.conv_kernel
             s = self.conv_stride
             p = self.conv_padding
-            cur_dim = ((h-1)*s - 2*p + f, (w-1)*s - 2*p + f)
+            cur_dim = (int((h-1)*s - 2*p + f), int((w-1)*s - 2*p + f))
             input_sizes.append(cur_dim)
         return input_sizes
 
@@ -311,13 +313,8 @@ class TrajGRU(nn.Module):
         self.encoder_conf = constant_params['encoder_conf']
         self.decoder_conf = constant_params['decoder_conf']
 
-        self.regression = constant_params.get("regression", "logistic")
-        self.loss_type = constant_params.get("loss_type", "BCE")
-
-        self.stateful = constant_params['stateful']
-        self.clip = finetune_params['clip']
-        self.lr = finetune_params['lr']
-        self.set_optimizer()
+        self.regression = constant_params.get("regression", "regression")
+        self.loss_type = constant_params.get("loss_type", "MSE")
 
         self.encoder = []
         for i in range(self.encoder_count):
@@ -333,6 +330,11 @@ class TrajGRU(nn.Module):
             )
         self.decoder = nn.ModuleList(self.decoder)
 
+        self.clip = finetune_params['clip']
+        self.lr = finetune_params['lr']
+        self.set_optimizer()
+
+        self.stateful = constant_params['stateful']
         # if stateful latent info will be transferred between batches
         self.hidden_state = None
 

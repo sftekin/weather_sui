@@ -24,7 +24,7 @@ class Params:
         self.model_params = {
             'CONVLSTM': {
                 'batch_params': {
-                    'batch_size': 1,
+                    'batch_size': 5,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
                     'train_seq_len': 240,
@@ -53,17 +53,18 @@ class Params:
             },
             'TRAJGRU': {
                 'batch_params': {
-                    'batch_size': 1,
+                    'batch_size': 5,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 240,
-                    'label_seq_len': 240,
+                    'train_seq_len': 5,
+                    'label_seq_len': 15,
                     'step_size': 1,  # Phase difference between train data and label
                     'mode': 'train',  # distance btw y and x, only train mode
                 },
                 'constant_params': {
                     'encoder_count': 5,
                     'decoder_count': 15,
+                    'stateful': True,
                     'encoder_conf': {
                         'input_size': (21, 41),
                         'input_dim': 5,
