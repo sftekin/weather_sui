@@ -54,13 +54,12 @@ class Params:
             'TRAJGRU': {
                 'batch_params': {
                     'batch_size': 1,
-                    'sequence_len': 5,
-                    'output_feature': [0],
-                    'output_frame': list(range(96)),
-                    'input_feature': [0, 1, 2, 3, 4],
-                    'step_size': 5,  # step difference between batches
-                    'mode': 'train',
-                    'shift_size': 1  # distance btw y and x, only train mode
+                    'train_feature': [0, 1, 2, 3, 4],
+                    'label_feature': [0],
+                    'train_seq_len': 240,
+                    'label_seq_len': 240,
+                    'step_size': 1,  # Phase difference between train data and label
+                    'mode': 'train',  # distance btw y and x, only train mode
                 },
                 'constant_params': {
                     'encoder_count': 5,
@@ -100,13 +99,12 @@ class Params:
             'EMA': {
                 'batch_params': {
                     'batch_size': 1,
-                    'sequence_len': 240,
-                    'output_feature': [0],
-                    'input_feature': [0],
-                    'output_frame': [-1],
-                    'step_size': 1,  # step difference between batches
+                    'train_feature': [0, 1, 2, 3, 4],
+                    'label_feature': [0],
+                    'train_seq_len': 240,
+                    'label_seq_len': 240,
+                    'step_size': 1,  # Phase difference between train data and label
                     'mode': 'train',
-                    'shift_size': 1  # distance btw y and x, only train mode
                 },
                 'constant_params': {
                     'window_len': 240
@@ -119,13 +117,12 @@ class Params:
             'SMA': {
                 'batch_params': {
                     'batch_size': 1,
-                    'sequence_len': 240,
-                    'output_feature': [0],
-                    'input_feature': [0],
-                    'output_frame': [-1],
-                    'step_size': 240,  # step difference between batches
+                    'train_feature': [0, 1, 2, 3, 4],
+                    'label_feature': [0],
+                    'train_seq_len': 240,
+                    'label_seq_len': 240,
+                    'step_size': 1,  # Phase difference between train data and label
                     'mode': 'train',
-                    'shift_size': 1  # distance btw y and x, only train mode
                 },
                 'constant_params': {
                     'window_len': 240,

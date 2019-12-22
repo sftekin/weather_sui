@@ -33,11 +33,11 @@ class BatchGenerator:
             for i in range(len(self.label_data)):
                 x = torch.from_numpy(self.train_data[i])
                 y = torch.from_numpy(self.label_data[i])
-                yield x[self.train_feature], y[self.label_feature]
+                yield x[..., self.train_feature], y[..., self.label_feature]
         else:
             for i in range(len(self.train_data)):
                 x = torch.from_numpy(self.train_data[i])
-                yield x[self.train_feature]
+                yield x[..., self.train_feature]
 
     def __configure_data(self, data, seq_len):
         """
