@@ -42,20 +42,24 @@ def trainer(batch_gens, **kwargs):
 def _train(model, batch_gen):
     batch_size = batch_gen.batch_size
     running_loss = 0
+    count = 0
     for grid, label_grid in batch_gen.batch_next():
+        count += 1
         running_loss += model.fit(grid, label_grid)
-    return running_loss / batch_size
+    return running_loss / count
 
 
 def _evaluate(model, batch_gen):
     batch_size = batch_gen.batch_size
     running_loss = 0
+    count = 0
     for grid, label_grid in batch_gen.batch_next():
+        count += 1
         label_grid = label_grid.permute(0, 1, 4, 2, 3).cpu().numpy()
 
         pred = model.predict(grid)
         running_loss += model.score(label_grid, pred)
-    return running_loss / batch_size
+    return running_loss / count
 
 
 

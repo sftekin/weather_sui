@@ -381,7 +381,7 @@ class TrajGRU(nn.Module):
         X = Variable(X).float().to(device)
         X = X.permute(0, 1, 4, 2, 3)
 
-        pred = self.forward(X, self.hidden_state)
+        pred, _ = self.forward(X, self.hidden_state)
         return pred.detach().cpu().numpy()
 
     def forward(self, input_tensor, hidden_states):
