@@ -302,21 +302,21 @@ class DecoderBlock(nn.Module):
 
 
 class TrajGRU(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, constant_params, finetune_params):
         super(TrajGRU, self).__init__()
 
-        self.encoder_count = kwargs['encoder_count']
-        self.decoder_count = kwargs['decoder_count']
+        self.encoder_count = constant_params['encoder_count']
+        self.decoder_count = constant_params['decoder_count']
 
-        self.encoder_conf = kwargs['encoder_conf']
-        self.decoder_conf = kwargs['decoder_conf']
+        self.encoder_conf = constant_params['encoder_conf']
+        self.decoder_conf = constant_params['decoder_conf']
 
-        self.regression = kwargs.get("regression", "logistic")
-        self.loss_type = kwargs.get("loss_type", "BCE")
+        self.regression = constant_params.get("regression", "logistic")
+        self.loss_type = constant_params.get("loss_type", "BCE")
 
-        self.stateful = kwargs['stateful']
-        self.clip = kwargs['clip']
-        self.lr = kwargs['lr']
+        self.stateful = constant_params['stateful']
+        self.clip = finetune_params['clip']
+        self.lr = finetune_params['lr']
         self.set_optimizer()
 
         self.encoder = []
@@ -356,7 +356,7 @@ class TrajGRU(nn.Module):
             batch_size = X.size(0)
             self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
-        pred, self.hidden_state = self.forward(X)
+        pred, self.hidden_state = self.forward(X, self.hidden_state)
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(y, pred)
@@ -379,7 +379,7 @@ class TrajGRU(nn.Module):
         X = Variable(X).float().to(device)
         X = X.permute(0, 1, 4, 2, 3)
 
-        pred = self.forward(X)
+        pred = self.forward(X, self.hidden_state)
         return pred.detach().cpu().numpy()
 
     def forward(self, input_tensor, hidden_states):

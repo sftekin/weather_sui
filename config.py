@@ -25,13 +25,12 @@ class Params:
             'CONVLSTM': {
                 'batch_params': {
                     'batch_size': 1,
-                    'sequence_len': 240,
-                    'output_feature': [0],
-                    'output_frame': list(range(96)),
-                    'input_feature': [0, 1, 2, 3, 4],
-                    'step_size': 240,  # step difference between batches
+                    'train_feature': [0, 1, 2, 3, 4],
+                    'label_feature': [0],
+                    'train_seq_len': 240,
+                    'label_seq_len': 240,
+                    'step_size': 1,  # Phase difference between train data and label
                     'mode': 'train',
-                    'shift_size': 1  # distance btw y and x, only train mode
                 },
                 'constant_params': {
                     'input_size': (21, 41),
@@ -50,6 +49,52 @@ class Params:
                 'finetune_params': {
                     "lr": 0.001,
                     'epoch': 50,
+                }
+            },
+            'TRAJGRU': {
+                'batch_params': {
+                    'batch_size': 1,
+                    'sequence_len': 5,
+                    'output_feature': [0],
+                    'output_frame': list(range(96)),
+                    'input_feature': [0, 1, 2, 3, 4],
+                    'step_size': 5,  # step difference between batches
+                    'mode': 'train',
+                    'shift_size': 1  # distance btw y and x, only train mode
+                },
+                'constant_params': {
+                    'encoder_count': 5,
+                    'decoder_count': 15,
+                    'encoder_conf': {
+                        'input_size': (21, 41),
+                        'input_dim': 5,
+                        'num_layers': 2,
+                        'conv_dims': [16, 64],
+                        'conv_kernel': 3,
+                        'conv_stride': 2,
+                        'gru_dims': [32, 96],
+                        'gru_kernels': [5, 3],
+                        'connection': 5,
+                        'bias': True
+                    },
+                    'decoder_conf': {
+                        'input_size': (6, 11),
+                        'input_dim': 96,
+                        'output_dim': 1,
+                        'num_layers': 2,
+                        'conv_dims': [64, 16],
+                        'conv_kernel': 3,
+                        'conv_stride': 2,
+                        'gru_dims': [96, 32],
+                        'gru_kernels': [3, 3],
+                        'connection': 5,
+                        'bias': True
+                    }
+                },
+                'finetune_params': {
+                    "lr": 0.001,
+                    'epoch': 50,
+                    'clip': 50
                 }
             },
             'EMA': {

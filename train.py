@@ -12,12 +12,12 @@ def trainer(batch_gens, **kwargs):
     num_epoch = kwargs['finetune_params']['epoch']
     batch_size = kwargs['batch_params']['batch_size']
 
-    # model = ConvLSTM(kwargs['constant_params'],
-    #                  kwargs['finetune_params'])
+    model = ConvLSTM(kwargs['constant_params'],
+                     kwargs['finetune_params'])
     # model = EMA(kwargs['constant_params'],
     #             kwargs['finetune_params'])
-    model = SMA(kwargs['constant_params'],
-                kwargs['finetune_params'])
+    # model = SMA(kwargs['constant_params'],
+    #             kwargs['finetune_params'])
 
     model = model.to(device)
 

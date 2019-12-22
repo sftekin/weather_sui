@@ -3,22 +3,41 @@ import torch
 
 
 class BatchGenerator:
-    def __init__(self, grid, transform=None, cut_start=True, **kwargs):
-        self.output_feature = kwargs['output_feature']  # list of label columns, e.g [0] for temperature
-        self.input_feature = kwargs['input_feature']  # list of label columns, e.g [0] for temperature
-        self.output_frame = kwargs['output_frame']
+    def __init__(self, data, transform=None, cut_start=True, **kwargs):
         self.batch_size = kwargs['batch_size']
-        self.seq_len = kwargs['sequence_len']
+
+        # list of train and label columns, e.g [0] for temperature
+        self.train_feature = kwargs['train_feature']
+        self.label_feature = kwargs['label_feature']
+
+        self.train_seq_len = kwargs['train_seq_len']
+        self.label_seq_len = kwargs['label_seq_len']
+
+        # Phase difference between train data and label
         self.step_size = kwargs['step_size']
         self.mode = kwargs['mode']
-        self.shift_size = kwargs['shift_size']
 
         self.transform = transform
         self.cut_start = cut_start
-        self.grid = self.configure_data(grid)
-        self.n_time_step = self.grid.shape[1]
 
-    def configure_data(self, data):
+        # data configured  by train_len to produce label acc. to that
+        self.data = self.__configure_data(data, self.train_seq_len)
+
+        self.train_data = self.__divide_batches(self.train_seq_len, shift=0)
+        self.label_data = self.__divide_batches(self.label_seq_len, shift=self.step_size)
+
+    def batch_next(self):
+        """
+        :return: x, y tensor in shape of (b, t, m, n, d)
+        """
+        if self.mode == 'train':
+            for i in range(len(self.label_data)):
+                yield self.train_data[i], self.label_data[i]
+        else:
+            for i in range(len(self.train_data)):
+                yield self.train_data[i]
+
+    def __configure_data(self, data, seq_len):
         """
         :param data:(T, M, N, D)
         :return: (B, T', M, N, D)
@@ -26,47 +45,27 @@ class BatchGenerator:
         t, m, n, d = data.shape
 
         # Keep only enough time steps to make full batches
-        n_batches = t // (self.batch_size * self.seq_len)
+        n_batches = t // (self.batch_size * seq_len)
         if self.cut_start:
-            start_time_step = t - (n_batches * self.batch_size * self.seq_len)
+            start_time_step = t - (n_batches * self.batch_size * seq_len)
             data = data[start_time_step:]
         else:
-            end_time_step = n_batches * self.batch_size * self.seq_len
+            end_time_step = n_batches * self.batch_size * seq_len
             data = data[:end_time_step]
 
         # Reshape into batch_size rows
         data = data.reshape((self.batch_size, -1, m, n, d))
-        data = data[:, :, :, :, self.input_feature]
         return data
 
+    def __divide_batches(self, seq_len, shift):
+        total_frame = self.data.shape[1]
+        stacked_data = []
+        for i in range(shift, total_frame, seq_len):
+            stacked_data.append(self.data[:, i:i+seq_len])
+        return stacked_data
+
     def __len__(self):
-        return self.n_time_step
-
-    def batch_next(self):
-        """
-        :return: x, y tensor in shape of (b, t, m, n, d)
-        """
         if self.mode == 'train':
-            yield from self._train_loop()
+            return len(self.label_data)
         else:
-            yield from self._pred_loop()
-
-    def _train_loop(self):
-        for n in range(0, self.n_time_step, self.step_size):
-            y_idx = n + self.shift_size
-            if y_idx+self.seq_len < self.n_time_step:
-                x = self.grid[:, n:n+self.seq_len]
-                y = self.grid[:, y_idx:y_idx+self.seq_len]
-
-                x = torch.from_numpy(x)
-                y = torch.from_numpy(y)
-                y = y[:, :, :, :, self.output_feature]
-                y = y[:, self.output_frame]
-                yield x, y
-
-    def _pred_loop(self):
-        for n in range(0, self.n_time_step, self.step_size):
-            if n + self.seq_len < self.n_time_step:
-                x = self.grid[:, n:n+self.seq_len]
-                yield x
-
+            return len(self.train_data)
