@@ -63,7 +63,8 @@ class BatchGenerator:
         total_frame = self.data.shape[1]
         stacked_data = []
         for i in range(shift, total_frame, seq_len):
-            stacked_data.append(self.data[:, i:i+seq_len])
+            if i+seq_len <= total_frame:
+                stacked_data.append(self.data[:, i:i+seq_len])
         return stacked_data
 
     def __len__(self):

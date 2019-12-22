@@ -94,7 +94,7 @@ class TrajGRUCell(nn.Module):
         for l in range(0, self.connection, 2):
             # (b, m, n, 2)
             grid = combined_conv[:, :, :, l:l+2]
-            warped = F.grid_sample(h, grid, mode='bilinear')
+            warped = F.grid_sample(h, grid, mode='bilinear', align_corners=False)
             yield warped
 
     def init_hidden(self, batch_size):
