@@ -13,7 +13,7 @@ class BatchGenerator:
         self.label_seq_len = kwargs['label_seq_len']
 
         # Phase difference between train data and label
-        self.step_size = kwargs['step_size']
+        self.phase_shift = kwargs['phase_shift']
         self.mode = kwargs['mode']
 
         self.transform = transform
@@ -22,8 +22,13 @@ class BatchGenerator:
         # data configured  by train_len to produce label acc. to that
         self.data = self.__configure_data(data, self.train_seq_len)
 
-        self.train_data = self.__divide_batches(self.train_seq_len, shift=0)
-        self.label_data = self.__divide_batches(self.label_seq_len, shift=self.step_size)
+        self.train_data = self.__divide_batches(self.train_seq_len, phase_shift=0)
+        if self.label_seq_len < self.train_seq_len:
+            self.label_data = self.__divide_batches(self.label_seq_len,
+                                                    phase_shift=self.phase_shift,
+                                                    step_size=self.train_seq_len)
+        else:
+            self.label_data = self.__divide_batches(self.label_seq_len, phase_shift=self.phase_shift)
 
     def batch_next(self):
         """
@@ -59,10 +64,12 @@ class BatchGenerator:
         data = data.reshape((self.batch_size, -1, m, n, d))
         return data
 
-    def __divide_batches(self, seq_len, shift):
+    def __divide_batches(self, seq_len, phase_shift, step_size=None):
+        if step_size is None:
+            step_size = seq_len
         total_frame = self.data.shape[1]
         stacked_data = []
-        for i in range(shift, total_frame, seq_len):
+        for i in range(phase_shift, total_frame, step_size):
             if i+seq_len <= total_frame:
                 stacked_data.append(self.data[:, i:i+seq_len])
         return stacked_data
