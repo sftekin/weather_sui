@@ -59,7 +59,7 @@ class Params:
                     'train_seq_len': 5,
                     'label_seq_len': 1,
                     'phase_shift': 1,  # Phase difference between train data and label
-                    'mode': 'train',  # distance btw y and x, only train mode
+                    'mode': 'train',
                 },
                 'constant_params': {
                     'encoder_count': 5,
@@ -92,8 +92,8 @@ class Params:
                     }
                 },
                 'finetune_params': {
-                    "lr": 0.00001,
-                    'epoch': 50,
+                    "lr": 0.001,
+                    'epoch': 200,
                     'clip': 5
                 }
             },
