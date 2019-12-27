@@ -123,12 +123,19 @@ class EncoderBlock(nn.Module):
         self.conv_stride = kwargs['conv_stride']
         self.conv_padding = self.conv_kernel // 2
 
+        self.pool_kernel = kwargs['pool_kernel']
+        self.pool_stride = kwargs['pool_stride']
+        self.pool_padding = kwargs['pool_padding']
+
         # traj-gru conf
         self.gru_input_sizes = self.__calc_input_size()
         self.gru_dims = kwargs['gru_dims']
         self.gru_kernels = kwargs['gru_kernels']
         self.connection = kwargs['connection']
         self.bias = kwargs['bias']
+
+        # This attribute will be transfered to decoder
+        self.list_of_sizes = [self.input_size] + self.gru_input_sizes
 
         self.cell_list = []
         for i in range(self.num_layers):
@@ -139,6 +146,10 @@ class EncoderBlock(nn.Module):
                           kernel_size=self.conv_kernel,
                           stride=self.conv_stride,
                           padding=self.conv_padding),
+
+                nn.MaxPool2d(kernel_size=self.pool_kernel,
+                             stride=self.pool_stride,
+                             padding=self.pool_padding),
 
                 TrajGRUCell(input_size=self.gru_input_sizes[i],
                             input_dim=self.conv_dims[i],
@@ -156,8 +167,8 @@ class EncoderBlock(nn.Module):
         :return: list of tensors (b, d, m, n)
         """
         init_states = []
-        # Only iterate odd indexes
-        for i in range(1, 2*self.num_layers+1, 2):
+        # Only iterate indexes with multiple of 3
+        for i in range(2, 3*self.num_layers, 3):
             init_states.append(self.cell_list[i].init_hidden(batch_size))
         return init_states
 
@@ -172,10 +183,11 @@ class EncoderBlock(nn.Module):
         cur_layer_input = input_tensor
         for layer_idx in range(self.num_layers):
             # Down-sample
-            conv_output = self.cell_list[2*layer_idx](cur_layer_input)
+            conv_output = self.cell_list[3*layer_idx](cur_layer_input)
+            max_output = self.cell_list[3*layer_idx+1](conv_output)
 
             # Memory element
-            cur_layer_input = self.cell_list[2*layer_idx+1](conv_output,
+            cur_layer_input = self.cell_list[3*layer_idx+2](max_output,
                                                             hidden_states[layer_idx])
             # Store states
             layer_state_list.append(cur_layer_input)
@@ -187,10 +199,12 @@ class EncoderBlock(nn.Module):
         cur_dim = self.input_size
         for i in range(self.num_layers):
             h, w = cur_dim
-            f = self.conv_kernel
-            s = self.conv_stride
-            p = self.conv_padding
-            cur_dim = (int((h - f + 2*p)/s + 1), int((w - f + 2*p)/s + 1))
+            f = self.pool_kernel
+            s = self.pool_stride
+            p = self.pool_padding
+            # floor the kernel sizes
+            cur_dim = (int((h - f + 2*p)/s + 1),
+                       int((w - f + 2*p)/s + 1))
             input_sizes.append(cur_dim)
         return input_sizes
 
@@ -199,16 +213,21 @@ class DecoderBlock(nn.Module):
     def __init__(self, **kwargs):
         super(DecoderBlock, self).__init__()
 
+        # This param should be determined by encoder
+        self.encoder_layer_sizes = kwargs['encoder_layer_sizes']
+
         # decoder conf
-        self.input_size = kwargs['input_size']
+        self.input_size = self.encoder_layer_sizes[-1]
         self.input_dim = kwargs['input_dim']
         self.num_layers = kwargs['num_layers']
 
         # up-sample conf
+        self.output_padding = self.__cal_output_pad()
+
         self.conv_dims = kwargs['conv_dims']
         self.conv_kernel = kwargs['conv_kernel']
         self.conv_stride = kwargs['conv_stride']
-        self.conv_padding = self.conv_kernel // 2
+        self.conv_padding = kwargs['conv_padding']
 
         # traj-gru conf
         self.gru_input_sizes = self.__calc_input_size()
@@ -236,7 +255,8 @@ class DecoderBlock(nn.Module):
                                    out_channels=self.conv_dims[i],
                                    kernel_size=self.conv_kernel,
                                    stride=self.conv_stride,
-                                   padding=self.conv_padding),
+                                   padding=self.conv_padding,
+                                   output_padding=self.output_padding[i]),
             ]
         self.cell_list = nn.ModuleList(self.cell_list)
 
@@ -290,6 +310,19 @@ class DecoderBlock(nn.Module):
 
         return output, layer_state_list
 
+    def __cal_output_pad(self):
+        output_pads = []
+        for size in self.encoder_layer_sizes:
+            output_pads.append((int(not size[0] % 2), int(not size[1] % 2)))
+
+        # drop the last since we only consider the transitions
+        output_pads = output_pads[:-1]
+
+        # reverse the list since we are decoding
+        output_pads = [output_pads[i-1] for i in range(len(output_pads), 0, -1)]
+
+        return output_pads
+
     def __calc_input_size(self):
         input_sizes = []
         cur_dim = self.input_size
@@ -323,10 +356,13 @@ class TrajGRU(nn.Module):
             )
         self.encoder = nn.ModuleList(self.encoder)
 
+        encoder_layer_sizes = self.encoder[0].list_of_sizes
+
         self.decoder = []
         for i in range(self.decoder_count):
             self.decoder.append(
-                DecoderBlock(**self.decoder_conf)
+                DecoderBlock(encoder_layer_sizes=encoder_layer_sizes,
+                             **self.decoder_conf)
             )
         self.decoder = nn.ModuleList(self.decoder)
 

@@ -71,7 +71,10 @@ class Params:
                         'num_layers': 2,
                         'conv_dims': [16, 64],
                         'conv_kernel': 3,
-                        'conv_stride': 2,
+                        'conv_stride': 1,
+                        'pool_kernel': 3,
+                        'pool_stride': 2,
+                        'pool_padding': 0,
                         'gru_dims': [32, 96],
                         'gru_kernels': [5, 3],
                         'connection': 5,
@@ -85,6 +88,7 @@ class Params:
                         'conv_dims': [64, 16],
                         'conv_kernel': 3,
                         'conv_stride': 2,
+                        'conv_padding': 0,
                         'gru_dims': [96, 32],
                         'gru_kernels': [3, 3],
                         'connection': 5,
@@ -92,7 +96,7 @@ class Params:
                     }
                 },
                 'finetune_params': {
-                    "lr": 0.001,
+                    "lr": 0.0001,
                     'epoch': 200,
                     'clip': 5
                 }
