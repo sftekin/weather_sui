@@ -30,20 +30,6 @@ class BatchGenerator:
         else:
             self.label_data = self.__divide_batches(self.label_seq_len, phase_shift=self.phase_shift)
 
-    def batch_next(self):
-        """
-        :return: x, y tensor in shape of (b, t, m, n, d)
-        """
-        if self.mode == 'train':
-            for i in range(len(self.label_data)):
-                x = torch.from_numpy(self.train_data[i])
-                y = torch.from_numpy(self.label_data[i])
-                yield x[..., self.train_feature], y[..., self.label_feature]
-        else:
-            for i in range(len(self.train_data)):
-                x = torch.from_numpy(self.train_data[i])
-                yield x[..., self.train_feature]
-
     def __configure_data(self, data, seq_len):
         """
         :param data:(T, M, N, D)
@@ -79,3 +65,17 @@ class BatchGenerator:
             return len(self.label_data)
         else:
             return len(self.train_data)
+
+    def batch_next(self):
+        """
+        :return: x, y tensor in shape of (b, t, m, n, d)
+        """
+        if self.mode == 'train':
+            for i in range(len(self.label_data)):
+                x = torch.from_numpy(self.train_data[i])
+                y = torch.from_numpy(self.label_data[i])
+                yield x[..., self.train_feature], y[..., self.label_feature]
+        else:
+            for i in range(len(self.train_data)):
+                x = torch.from_numpy(self.train_data[i])
+                yield x[..., self.train_feature]
