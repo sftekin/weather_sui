@@ -200,6 +200,9 @@ class ConvLSTM(nn.Module):
             batch_size = X.size(0)
             self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
+        # train_seq_len = X.shape[1]
+        # label_seq_len = y.shape[1]
+        # for input_tensor in range()
         pred, self.hidden_state = self.forward(X, self.hidden_state)
 
         self.optimizer.zero_grad()
@@ -223,7 +226,7 @@ class ConvLSTM(nn.Module):
         X = Variable(X).float().to(device)
         X = X.permute(0, 1, 4, 2, 3)
 
-        pred = self.forward(X, self.hidden_state)
+        pred, _ = self.forward(X, self.hidden_state)
         return pred.detach().cpu().numpy()
 
     def forward(self, input_tensor, hidden_states):

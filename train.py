@@ -40,7 +40,6 @@ def trainer(batch_gens, **kwargs):
 
 
 def _train(model, batch_gen):
-    batch_size = batch_gen.batch_size
     running_loss = 0
     count = 0
     for grid, label_grid in batch_gen.batch_next():
@@ -50,7 +49,6 @@ def _train(model, batch_gen):
 
 
 def _evaluate(model, batch_gen):
-    batch_size = batch_gen.batch_size
     running_loss = 0
     count = 0
     for grid, label_grid in batch_gen.batch_next():

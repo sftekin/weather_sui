@@ -27,13 +27,13 @@ class Params:
                     'batch_size': 4,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 5,
+                    'train_seq_len': 20,
                     'label_seq_len': 1,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'encoder_count': 5,  # Same with train_seq_len
+                    'encoder_count': 20,  # Same with train_seq_len
                     'decoder_count': 1,  # Same with label_seq_len
                     'output_dim': 1,
                     'encoder_conf': {
