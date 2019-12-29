@@ -39,7 +39,6 @@ class Params:
                     'window_length': 240,  # This should be same with batch config
                     'hidden_dim': [5, 16, 16, 32, 64, 64, 32, 16, 8, 1],
                     'kernel_size': [5, 5, 5, 5, 5, 3, 3, 3, 3, 1],
-                    'clip': 50,
                     'bias': True,
                     'stateful': True,
                     'peephole_con': False,
@@ -47,6 +46,7 @@ class Params:
                     "loss_type": "MSE"
                 },
                 'finetune_params': {
+                    'clip': 50,
                     "lr": 0.001,
                     'epoch': 50,
                 }
