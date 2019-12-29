@@ -4,6 +4,7 @@ from models.conv_lstm import ConvLSTM
 from models.traj_gru import TrajGRU
 from models.ema import EMA
 from models.sma import SMA
+from models.spatial_lstm import SpatialLSTM
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -15,12 +16,14 @@ def trainer(batch_gens, **kwargs):
 
     # model = ConvLSTM(kwargs['constant_params'],
     #                  kwargs['finetune_params'])
+    model = SpatialLSTM(kwargs['constant_params'],
+                        kwargs['finetune_params'])
     # model = TrajGRU(kwargs['constant_params'],
     #                 kwargs['finetune_params'])
     # model = EMA(kwargs['constant_params'],
     #             kwargs['finetune_params'])
-    model = SMA(kwargs['constant_params'],
-                kwargs['finetune_params'])
+    # model = SMA(kwargs['constant_params'],
+    #             kwargs['finetune_params'])
 
     model = model.to(device)
 
@@ -40,6 +43,7 @@ def trainer(batch_gens, **kwargs):
 
 
 def _train(model, batch_gen):
+    model.train()
     running_loss = 0
     count = 0
     for grid, label_grid in batch_gen.batch_next():
@@ -49,6 +53,7 @@ def _train(model, batch_gen):
 
 
 def _evaluate(model, batch_gen):
+    model.eval()
     running_loss = 0
     count = 0
     for grid, label_grid in batch_gen.batch_next():
