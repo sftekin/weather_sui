@@ -24,17 +24,17 @@ class Params:
         self.model_params = {
             'CONVLSTM': {
                 'batch_params': {
-                    'batch_size': 4,
+                    'batch_size': 5,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
                     'train_seq_len': 10,
-                    'label_seq_len': 15,
+                    'label_seq_len': 1,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
                     'encoder_count': 10,  # Same with train_seq_len
-                    'decoder_count': 15,  # Same with label_seq_len
+                    'decoder_count': 1,  # Same with label_seq_len
                     'detach_step': 5,
                     'output_dim': 1,
                     'encoder_conf': {
@@ -125,17 +125,18 @@ class Params:
                     'batch_size': 5,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 15,
+                    'train_seq_len': 5,
                     'label_seq_len': 15,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 5
+                    'window_len': 15,  # Must be same with label_seq_len
+                    'label_feature': [0]
                 },
                 'finetune_params': {
                     'mu': .1,
-                    'epoch': 50
+                    'epoch': 1
                 }
             },
             'SMA': {
