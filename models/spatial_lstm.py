@@ -115,14 +115,19 @@ class SpatialLSTM(nn.Module):
         spatial_out = []
         hidden_states = []
         for cell_idx in range(self.input_size):
-            r_output, r_hidden = self.spatial_lstms(flat_grid[..., cell_idx],
-                                                    hidden[cell_idx])
+            r_output, r_hidden = self.spatial_lstms[cell_idx](flat_grid[..., cell_idx],
+                                                              hidden[cell_idx])
             hidden_states.append(r_hidden)
             spatial_out.append(r_output)
         # returning to (b, t, d, m, n)
         spatial_out = torch.stack(spatial_out, dim=3).contiguous().view(input_tensor.shape)
 
-        output = self.output_conv(spatial_out)
+        # Conv output
+        conv_output = []
+        for t in range(self.seq_len):
+            conv_output.append(self.output_conv(spatial_out[:, t]))
+
+        output = torch.stack(conv_output, dim=1)
 
         if self.regression == 'logistic':
             final_output = torch.sigmoid(output)
@@ -168,7 +173,7 @@ class SpatialLSTM(nn.Module):
             hidden = (Variable(torch.zeros(self.num_layer, batch_size, self.hidden_dim)).to(device),
                       Variable(torch.zeros(self.num_layer, batch_size, self.hidden_dim)).to(device))
             hidden_states.append(hidden)
-        return hidden
+        return hidden_states
 
     def __repackage_hidden(self, h):
         """Wraps hidden states in new Tensors, to detach them from their history."""
