@@ -32,7 +32,7 @@ def trainer(batch_gens, **kwargs):
         print('Epoch: {}/{}'.format(epoch, num_epoch))
         print('-*-' * 12)
 
-        # model.reset_per_epoch(batch_size=batch_size)
+        model.reset_per_epoch(batch_size=batch_size)
         train_loss = _train(model, batch_gens['train'])
         val_loss = _evaluate(model, batch_gens['validation'])
 

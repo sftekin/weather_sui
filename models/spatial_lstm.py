@@ -165,8 +165,8 @@ class SpatialLSTM(nn.Module):
     def __init_hidden(self, batch_size):
         hidden_states = []
         for i in range(self.input_size):
-            hidden = (Variable(torch.zeros(self.n_layers, batch_size, self.n_hidden)).to(device),
-                      Variable(torch.zeros(self.n_layers, batch_size, self.n_hidden)).to(device))
+            hidden = (Variable(torch.zeros(self.num_layer, batch_size, self.hidden_dim)).to(device),
+                      Variable(torch.zeros(self.num_layer, batch_size, self.hidden_dim)).to(device))
             hidden_states.append(hidden)
         return hidden
 
