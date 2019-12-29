@@ -44,7 +44,7 @@ def _train(model, batch_gen):
     count = 0
     for grid, label_grid in batch_gen.batch_next():
         count += 1
-        running_loss += model.fit(grid, label_grid)
+        running_loss += model.fit(grid, label_grid, batch_idx=count)
     return running_loss / count
 
 

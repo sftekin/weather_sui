@@ -168,6 +168,7 @@ class ConvLSTM(nn.Module):
         self.regression = constant_params.get("regression", "logistic")
         self.loss_type = constant_params.get("loss_type", "BCE")
 
+        self.detach_step = constant_params['detach_step']
         self.clip = finetune_params['clip']
         self.lr = finetune_params['lr']
         self.set_optimizer()
@@ -192,22 +193,20 @@ class ConvLSTM(nn.Module):
         X = X.permute(0, 1, 4, 2, 3)
         y = y.permute(0, 1, 4, 2, 3)
 
-        if self.stateful:
-            # Creating new variables for the hidden state, otherwise
-            # we'd back-prop through the entire training history
-            self.hidden_state = list(self.__repackage_hidden(self.hidden_state))
-        else:
-            batch_size = X.size(0)
-            self.hidden_state = self.__init_hidden(batch_size=batch_size)
+        if kwargs['batch_idx'] % self.detach_step == 0:
+            if self.stateful:
+                # Creating new variables for the hidden state, otherwise
+                # we'd back-prop through the entire training history
+                self.hidden_state = list(self.__repackage_hidden(self.hidden_state))
+            else:
+                batch_size = X.size(0)
+                self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
-        # train_seq_len = X.shape[1]
-        # label_seq_len = y.shape[1]
-        # for input_tensor in range()
         pred, self.hidden_state = self.forward(X, self.hidden_state)
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(y, pred)
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         nn.utils.clip_grad_norm_(self.parameters(), self.clip)
