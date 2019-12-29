@@ -122,7 +122,7 @@ class Params:
             },
             'EMA': {
                 'batch_params': {
-                    'batch_size': 5,
+                    'batch_size': 1,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
                     'train_seq_len': 5,
@@ -141,23 +141,24 @@ class Params:
             },
             'SMA': {
                 'batch_params': {
-                    'batch_size': 5,
+                    'batch_size': 1,
                     'train_feature': [0],
                     'label_feature': [0],
                     'train_seq_len': 5,
-                    'label_seq_len': 1,
+                    'label_seq_len': 15,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
                     'window_len': 5,
+                    'output_len': 15,  # Must be same with label_seq_len
                     'train_weights': True,
                     'attention_to': 'right',
                     'init_dist': 'kaiser'
                 },
                 'finetune_params': {
                     "lr": 0.001,
-                    'epoch': 30,
+                    'epoch': 50,
 
                 }
             }

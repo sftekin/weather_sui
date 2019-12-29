@@ -43,8 +43,6 @@ class EMA(nn.Module):
     def forward(self, x):
         """
         :param x: 5-D tensor of shape (b, t, m, n, d)
-        :param early_side_info_dict:
-        :param late_side_info_dict:
         :return: (b, t, m, n, d)
         """
         # first trace the given data

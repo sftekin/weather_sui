@@ -17,10 +17,10 @@ def trainer(batch_gens, **kwargs):
     #                  kwargs['finetune_params'])
     # model = TrajGRU(kwargs['constant_params'],
     #                 kwargs['finetune_params'])
-    model = EMA(kwargs['constant_params'],
-                kwargs['finetune_params'])
-    # model = SMA(kwargs['constant_params'],
+    # model = EMA(kwargs['constant_params'],
     #             kwargs['finetune_params'])
+    model = SMA(kwargs['constant_params'],
+                kwargs['finetune_params'])
 
     model = model.to(device)
 
