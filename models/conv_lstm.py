@@ -133,14 +133,16 @@ class ConvLSTM(nn.Module):
 
     def __init__(self, constant_params, finetune_params):
         nn.Module.__init__(self)
-        self.input_size = constant_params.get("input_size", (35, 100))
-        self.input_dim = constant_params.get("input_dim", 3)
+        self.input_size = constant_params.get("input_size", (21, 41))
+        self.input_dim = constant_params.get("input_dim", 5)
+        self.output_dim = constant_params['output_dim']
 
         self.encoder_count = constant_params['encoder_count']
         self.decoder_count = constant_params['decoder_count']
 
         self.encoder_conf = constant_params['encoder_conf']
         self.decoder_conf = constant_params['decoder_conf']
+        self.conv_conf = constant_params['conv_conf']
 
         # Defining blocks
         self.encoder = []
@@ -157,6 +159,12 @@ class ConvLSTM(nn.Module):
             )
         self.decoder = nn.ModuleList(self.decoder)
 
+        self.output_conv = nn.Conv2d(in_channels=self.conv_conf['input_dim'],
+                                     out_channels=self.output_dim,
+                                     kernel_size=self.conv_conf['kernel_size'],
+                                     stride=self.conv_conf['stride'],
+                                     padding=self.conv_conf['kernel_size'] // 2)
+
         self.regression = constant_params.get("regression", "logistic")
         self.loss_type = constant_params.get("loss_type", "BCE")
 
@@ -165,16 +173,12 @@ class ConvLSTM(nn.Module):
         self.set_optimizer()
 
         # if stateful latent info will be transferred between batches
+        self.stateful = constant_params['stateful']
         self.hidden_state = None
 
     def reset_per_epoch(self, **kwargs):
         batch_size = kwargs['batch_size']
         self.hidden_state = self.__init_hidden(batch_size=batch_size)
-
-    def __init_hidden(self, batch_size):
-        # only the first block hidden is needed
-        hidden_list = self.encoder[0].init_memory(batch_size)
-        return hidden_list
 
     def fit(self, X, y, **kwargs):
         """
@@ -196,7 +200,7 @@ class ConvLSTM(nn.Module):
             batch_size = X.size(0)
             self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
-        pred = self.forward(X)
+        pred, self.hidden_state = self.forward(X, self.hidden_state)
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(y, pred)
@@ -219,7 +223,7 @@ class ConvLSTM(nn.Module):
         X = Variable(X).float().to(device)
         X = X.permute(0, 1, 4, 2, 3)
 
-        pred = self.forward(X)
+        pred = self.forward(X, self.hidden_state)
         return pred.detach().cpu().numpy()
 
     def forward(self, input_tensor, hidden_states):
@@ -234,55 +238,30 @@ class ConvLSTM(nn.Module):
         cur_states = hidden_states
         for t in range(seq_len):
             # since each block corresponds to each time-step
-            cur_states = self.encoder[t](input_tensor[:, t], cur_states)
+            _, cur_states = self.encoder[t](input_tensor[:, t], cur_states)
+
+        # reverse the state list
+        cur_states = [cur_states[i-1] for i in range(len(cur_states), 0, -1)]
 
         # forward decoder block
         block_output_list = []
-        decoder_input = torch.zeros_like(hidden_states[-1])
+        decoder_input = torch.zeros_like(hidden_states[-1][0])
         for i in range(self.decoder_count):
             output, cur_states = self.decoder[i](decoder_input, cur_states)
-            block_output_list.append(output)
+            conv_output = self.output_conv(output)
+            block_output_list.append(conv_output)
 
-        final_output = torch.stack(block_output_list, dim=1)
+        block_output = torch.stack(block_output_list, dim=1)
 
         if self.regression == 'logistic':
-            final_output = torch.sigmoid(final_output)
+            final_output = torch.sigmoid(block_output)
+        else:
+            final_output = block_output
 
-        return final_output
+        # reverse the state list
+        cur_states = [cur_states[i - 1] for i in range(len(cur_states), 0, -1)]
 
-    def __forward_block(self, input_tensor, hidden_state, return_all_layers):
-        """
-        :param input_tensor:
-        :param hidden_state:
-        :param return_all_layers:
-        :return: [(B, T, D, M, N), ...], [(B, D, M, N), ...] if return_all_layers false
-        returns the last element of the list
-        """
-        layer_output_list = []
-        layer_state_list = []
-
-        seq_len = input_tensor.size(1)
-        cur_layer_input = input_tensor
-
-        for layer_idx in range(self.num_layers):
-            h, c = hidden_state[layer_idx]
-            output_inner = []
-            for t in range(seq_len):
-                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :],
-                                                 cur_state=[h, c])
-                output_inner.append(h)
-
-            layer_output = torch.stack(output_inner, dim=1)
-            cur_layer_input = layer_output
-
-            layer_output_list.append(layer_output)
-            layer_state_list.append([h, c])
-
-        if not return_all_layers:
-            layer_output_list = layer_output_list[-1:]
-            layer_state_list = layer_state_list[-1:]
-
-        return layer_output_list, layer_state_list
+        return final_output, cur_states
 
     def set_optimizer(self):
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
@@ -314,6 +293,11 @@ class ConvLSTM(nn.Module):
         """
         loss = self.compute_loss(torch.Tensor(labels), torch.Tensor(preds))
         return loss.numpy()
+
+    def __init_hidden(self, batch_size):
+        # only the first block hidden is needed
+        hidden_list = self.encoder[0].init_memory(batch_size)
+        return hidden_list
 
     def __repackage_hidden(self, h):
         """Wraps hidden states in new Tensors, to detach them from their history."""

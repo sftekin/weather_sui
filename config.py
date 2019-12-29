@@ -24,29 +24,47 @@ class Params:
         self.model_params = {
             'CONVLSTM': {
                 'batch_params': {
-                    'batch_size': 5,
+                    'batch_size': 4,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 240,
-                    'label_seq_len': 240,
+                    'train_seq_len': 5,
+                    'label_seq_len': 1,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'input_size': (21, 41),
-                    'input_dim': 5,
-                    'num_layers': 10,
-                    'window_length': 240,  # This should be same with batch config
-                    'hidden_dim': [5, 16, 16, 32, 64, 64, 32, 16, 8, 1],
-                    'kernel_size': [5, 5, 5, 5, 5, 3, 3, 3, 3, 1],
-                    'bias': True,
+                    'encoder_count': 5,  # Same with train_seq_len
+                    'decoder_count': 1,  # Same with label_seq_len
+                    'output_dim': 1,
+                    'encoder_conf': {
+                        'input_size': (21, 41),
+                        'input_dim': 5,
+                        'num_layers': 5,
+                        'hidden_dim': [5, 16, 16, 32, 64],
+                        'kernel_size': [5, 5, 5, 5, 5],
+                        'peephole_con': False,
+                        'bias': True,
+                    },
+                    'decoder_conf': {
+                        'input_size': (21, 41),
+                        'input_dim': 64,
+                        'num_layers': 5,
+                        'hidden_dim': [64, 32, 16, 16, 5],
+                        'kernel_size': [3, 3, 3, 3, 3],
+                        'peephole_con': False,
+                        'bias': True,
+                    },
+                    'conv_conf': {
+                        'input_dim': 5,
+                        'kernel_size': 1,
+                        'stride': 1,
+                    },
                     'stateful': True,
-                    'peephole_con': False,
                     "regression": "regression",
                     "loss_type": "MSE"
                 },
                 'finetune_params': {
-                    'clip': 50,
+                    'clip': 5,
                     "lr": 0.001,
                     'epoch': 50,
                 }
