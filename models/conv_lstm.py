@@ -40,7 +40,11 @@ class ConvLSTMCell(nn.Module):
                               bias=self.bias)
 
     def forward(self, input_tensor, cur_state):
-
+        """
+        :param input_tensor: (B, D, M, N)
+        :param cur_state: [(B, D, M, N), (B, D, M, N)]
+        :return:
+        """
         h_cur, c_cur = cur_state
 
         combined = torch.cat([input_tensor, h_cur], dim=1)
@@ -68,7 +72,6 @@ class ConvLSTMCell(nn.Module):
     def init_hidden(self, batch_size):
         # Create two new tensors with sizes n_layers x batch_size x n_hidden,
         # initialized to zero, for hidden state and cell state of LSTM
-
         hidden = (Variable(torch.zeros(batch_size, self.hidden_dim,
                                        self.height, self.width)).to(device),
                   Variable(torch.zeros(batch_size,
@@ -81,10 +84,11 @@ class ConvLSTMBlock(nn.Module):
     def __init__(self, **kwargs):
         super(ConvLSTMBlock, self).__init__()
 
-        # Encoder conf
+        # block conf
         self.input_size = kwargs['input_size']
         self.input_dim = kwargs['input_dim']
         self.num_layers = kwargs['num_layers']
+        self.return_all_layers = kwargs['return_all_layers']
 
         # Conv-LSTM conf
         self.hidden_dim = kwargs['hidden_dim']
@@ -113,51 +117,53 @@ class ConvLSTMBlock(nn.Module):
 
     def forward(self, input_tensor, hidden_state):
         """
-        :param input_tensor: (B, D', M, N)
+        :param input_tensor: (B, T, D', M, N)
         :param hidden_state: [(B, D', M, N), (B, D'', M, N), ... (B, D''', M, N)]
         :return: (B, D', M, N), hidden_states
         """
         layer_state_list = []
+        layer_output_list = []
 
+        seq_len = input_tensor.size(1)
         cur_layer_input = input_tensor
+
         for layer_idx in range(self.num_layers):
-            h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input,
-                                             cur_state=hidden_state[layer_idx])
-            cur_layer_input = h
+            h, c = hidden_state[layer_idx]
+            output_inner = []
+            for t in range(seq_len):
+                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, ...],
+                                                 cur_state=[h, c])
+                output_inner.append(h)
+            cur_layer_input = torch.stack(output_inner, dim=1)
+
+            layer_output_list.append(cur_layer_input)
             layer_state_list.append([h, c])
 
-        return cur_layer_input, layer_state_list
+        if not self.return_all_layers:
+            layer_output_list = layer_output_list[-1]
+
+        return layer_output_list, layer_state_list
 
 
 class ConvLSTM(nn.Module):
 
     def __init__(self, constant_params, finetune_params):
         nn.Module.__init__(self)
-        self.input_size = constant_params.get("input_size", (21, 41))
-        self.input_dim = constant_params.get("input_dim", 5)
+
+        # class conf
         self.output_dim = constant_params['output_dim']
+        self.window_in = constant_params['window_in']
+        self.window_out = constant_params['window_out']
 
-        self.encoder_count = constant_params['encoder_count']
-        self.decoder_count = constant_params['decoder_count']
-
+        # module blocks conf
         self.encoder_conf = constant_params['encoder_conf']
         self.decoder_conf = constant_params['decoder_conf']
         self.conv_conf = constant_params['conv_conf']
 
-        # Defining blocks
-        self.encoder = []
-        for i in range(self.encoder_count):
-            self.encoder.append(
-                ConvLSTMBlock(**self.encoder_conf)
-            )
-        self.encoder = nn.ModuleList(self.encoder)
+        # defining blocks
+        self.encoder = ConvLSTMBlock(**self.encoder_conf)
 
-        self.decoder = []
-        for i in range(self.decoder_count):
-            self.decoder.append(
-                ConvLSTMBlock(**self.decoder_conf)
-            )
-        self.decoder = nn.ModuleList(self.decoder)
+        self.decoder = ConvLSTMBlock(**self.decoder_conf)
 
         self.output_conv = nn.Conv2d(in_channels=self.conv_conf['input_dim'],
                                      out_channels=self.output_dim,
@@ -202,7 +208,7 @@ class ConvLSTM(nn.Module):
                 batch_size = X.size(0)
                 self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
-        pred, self.hidden_state = self.forward(X, self.hidden_state)
+        pred = self.forward(X, self.hidden_state)
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(y, pred)
@@ -225,7 +231,7 @@ class ConvLSTM(nn.Module):
         X = Variable(X).float().to(device)
         X = X.permute(0, 1, 4, 2, 3)
 
-        pred, _ = self.forward(X, self.hidden_state)
+        pred = self.forward(X, self.hidden_state)
         return pred.detach().cpu().numpy()
 
     def forward(self, input_tensor, hidden_states):
@@ -234,23 +240,24 @@ class ConvLSTM(nn.Module):
         :param hidden_states: [(B, D, M, N), ..., (B, D, M, N)]
         :return: (B, T', D', M, N)
         """
-
+        b, t, d, m, n = input_tensor.shape
         # forward encoder block
-        seq_len = input_tensor.shape[1]
-        cur_states = hidden_states
-        for t in range(seq_len):
-            # since each block corresponds to each time-step
-            _, cur_states = self.encoder[t](input_tensor[:, t], cur_states)
+        _, cur_states = self.encoder(input_tensor, hidden_states)
+
+        # store state for stateful models
+        self.hidden_state = cur_states
 
         # reverse the state list
         cur_states = [cur_states[i-1] for i in range(len(cur_states), 0, -1)]
 
         # forward decoder block
+        decoder_input = torch.zeros((b, self.window_out, self.decoder_conf['input_dim'], m, n))
+        dec_output, _ = self.decoder(decoder_input, cur_states)
+
+        # forward convolution
         block_output_list = []
-        decoder_input = torch.zeros_like(hidden_states[-1][0])
-        for i in range(self.decoder_count):
-            output, cur_states = self.decoder[i](decoder_input, cur_states)
-            conv_output = self.output_conv(output)
+        for t in range(self.window_out):
+            conv_output = self.output_conv(dec_output[:, t, ...])
             block_output_list.append(conv_output)
 
         block_output = torch.stack(block_output_list, dim=1)
@@ -260,10 +267,7 @@ class ConvLSTM(nn.Module):
         else:
             final_output = block_output
 
-        # reverse the state list
-        cur_states = [cur_states[i - 1] for i in range(len(cur_states), 0, -1)]
-
-        return final_output, cur_states
+        return final_output
 
     def set_optimizer(self):
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
@@ -298,7 +302,7 @@ class ConvLSTM(nn.Module):
 
     def __init_hidden(self, batch_size):
         # only the first block hidden is needed
-        hidden_list = self.encoder[0].init_memory(batch_size)
+        hidden_list = self.encoder.init_memory(batch_size)
         return hidden_list
 
     def __repackage_hidden(self, h):

@@ -8,7 +8,7 @@ class Params:
         self.data_params = {
             'start_date': pd.to_datetime('01-01-2017 00:00:00', format='%d-%m-%Y %H:%M:%S'),
             'end_date': pd.to_datetime('27-03-2018 00:00:00', format='%d-%m-%Y %H:%M:%S'),
-            'freq': 1,
+            'freq': 3,
             'normalise_events': False,
             'data_path': 'data/London_historical_meo_grid.csv',
             'data_save_path': 'data/pickles/raw_data.pkl',
@@ -24,18 +24,18 @@ class Params:
         self.model_params = {
             'CONVLSTM': {
                 'batch_params': {
-                    'batch_size': 5,
+                    'batch_size': 4,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
                     'train_seq_len': 10,
-                    'label_seq_len': 1,
+                    'label_seq_len': 5,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'encoder_count': 10,  # Same with train_seq_len
-                    'decoder_count': 1,  # Same with label_seq_len
-                    'detach_step': 5,
+                    'window_in': 10,  # Same with train_seq_len
+                    'window_out': 5,  # Same with label_seq_len
+                    'detach_step': 1,
                     'output_dim': 1,
                     'encoder_conf': {
                         'input_size': (21, 41),
@@ -45,6 +45,7 @@ class Params:
                         'kernel_size': [5, 5, 5, 5, 5],
                         'peephole_con': False,
                         'bias': True,
+                        'return_all_layers': False
                     },
                     'decoder_conf': {
                         'input_size': (21, 41),
@@ -54,6 +55,7 @@ class Params:
                         'kernel_size': [3, 3, 3, 3, 3],
                         'peephole_con': False,
                         'bias': True,
+                        'return_all_layers': False
                     },
                     'conv_conf': {
                         'input_dim': 5,
@@ -178,21 +180,21 @@ class Params:
                     'batch_size': 1,
                     'train_feature': [0],
                     'label_feature': [0],
-                    'train_seq_len': 5,
-                    'label_seq_len': 15,
+                    'train_seq_len': 10,
+                    'label_seq_len': 5,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 5,
-                    'output_len': 15,  # Must be same with label_seq_len
+                    'window_len': 10,
+                    'output_len': 5,  # Must be same with label_seq_len
                     'train_weights': True,
                     'attention_to': 'right',
                     'init_dist': 'kaiser'
                 },
                 'finetune_params': {
-                    "lr": 0.001,
-                    'epoch': 50,
+                    "lr": 0.01,
+                    'epoch': 200,
 
                 }
             }
