@@ -24,10 +24,10 @@ class Params:
         self.model_params = {
             'CONVLSTM': {
                 'batch_params': {
-                    'batch_size': 4,
+                    'batch_size': 1,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 10,
+                    'train_seq_len': 30,
                     'label_seq_len': 5,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
@@ -161,13 +161,13 @@ class Params:
                     'batch_size': 1,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 5,
-                    'label_seq_len': 15,
+                    'train_seq_len': 30,
+                    'label_seq_len': 10,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 15,  # Must be same with label_seq_len
+                    'window_len': 10,  # Must be same with label_seq_len
                     'label_feature': [0]
                 },
                 'finetune_params': {
@@ -180,15 +180,15 @@ class Params:
                     'batch_size': 1,
                     'train_feature': [0],
                     'label_feature': [0],
-                    'train_seq_len': 10,
-                    'label_seq_len': 5,
+                    'train_seq_len': 30,
+                    'label_seq_len': 10,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 10,
-                    'output_len': 5,  # Must be same with label_seq_len
-                    'train_weights': True,
+                    'window_len': 30,
+                    'output_len': 10,  # Must be same with label_seq_len
+                    'train_weights': False,
                     'attention_to': 'right',
                     'init_dist': 'kaiser'
                 },
