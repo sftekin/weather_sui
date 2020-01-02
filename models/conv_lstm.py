@@ -251,7 +251,7 @@ class ConvLSTM(nn.Module):
         cur_states = [cur_states[i-1] for i in range(len(cur_states), 0, -1)]
 
         # forward decoder block
-        decoder_input = torch.zeros((b, self.window_out, self.decoder_conf['input_dim'], m, n))
+        decoder_input = torch.zeros((b, self.window_out, self.decoder_conf['input_dim'], m, n)).to(device)
         dec_output, _ = self.decoder(decoder_input, cur_states)
 
         # forward convolution
