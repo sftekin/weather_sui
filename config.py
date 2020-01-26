@@ -68,8 +68,8 @@ class Params:
                 },
                 'finetune_params': {
                     'clip': 5,
-                    "lr": 0.0001,
-                    'epoch': 450,
+                    "lr": 0.0007,
+                    'epoch': 100,
                 }
             },
             'SpatialLSTM': {
