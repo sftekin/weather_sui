@@ -1,8 +1,8 @@
 .idea
 .coverage
 
+results/*
+!results/figures/.gitkeep
+
 data/*
 !data/pickles/.gitkeep
-
-results/*
-!results/.gitkeep

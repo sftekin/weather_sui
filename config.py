@@ -106,68 +106,18 @@ class Params:
                     'epoch': 50,
                 }
             },
-            'TRAJGRU': {
-                'batch_params': {
-                    'batch_size': 5,
-                    'train_feature': [0, 1, 2, 3, 4],
-                    'label_feature': [0],
-                    'train_seq_len': 5,
-                    'label_seq_len': 1,
-                    'phase_shift': 1,  # Phase difference between train data and label
-                    'mode': 'train',
-                },
-                'constant_params': {
-                    'encoder_count': 5,
-                    'decoder_count': 1,
-                    'stateful': True,
-                    'encoder_conf': {
-                        'input_size': (21, 41),
-                        'input_dim': 5,
-                        'num_layers': 2,
-                        'conv_dims': [16, 64],
-                        'conv_kernel': 3,
-                        'conv_stride': 1,
-                        'pool_kernel': 3,
-                        'pool_stride': 2,
-                        'pool_padding': 0,
-                        'gru_dims': [32, 96],
-                        'gru_kernels': [5, 3],
-                        'connection': 5,
-                        'bias': True
-                    },
-                    'decoder_conf': {
-                        'input_size': (6, 11),
-                        'input_dim': 96,
-                        'output_dim': 1,
-                        'num_layers': 2,
-                        'conv_dims': [64, 16],
-                        'conv_kernel': 3,
-                        'conv_stride': 2,
-                        'conv_padding': 0,
-                        'gru_dims': [96, 32],
-                        'gru_kernels': [3, 3],
-                        'connection': 5,
-                        'bias': True
-                    }
-                },
-                'finetune_params': {
-                    "lr": 0.0001,
-                    'epoch': 200,
-                    'clip': 5
-                }
-            },
             'EMA': {
                 'batch_params': {
                     'batch_size': 1,
-                    'train_feature': [0, 1, 2, 3, 4],
+                    'train_feature': [0],
                     'label_feature': [0],
-                    'train_seq_len': 30,
-                    'label_seq_len': 10,
-                    'phase_shift': 1,  # Phase difference between train data and label
+                    'train_seq_len': 5,
+                    'label_seq_len': 5,
+                    'phase_shift': 5,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 10,  # Must be same with label_seq_len
+                    'window_len': 5,  # Must be same with label_seq_len
                     'label_feature': [0]
                 },
                 'finetune_params': {
@@ -180,17 +130,17 @@ class Params:
                     'batch_size': 1,
                     'train_feature': [0],
                     'label_feature': [0],
-                    'train_seq_len': 30,
-                    'label_seq_len': 10,
-                    'phase_shift': 1,  # Phase difference between train data and label
+                    'train_seq_len': 5,
+                    'label_seq_len': 5,
+                    'phase_shift': 5,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_len': 30,
-                    'output_len': 10,  # Must be same with label_seq_len
-                    'train_weights': False,
-                    'attention_to': 'right',
-                    'init_dist': 'kaiser'
+                    'window_len': 5,
+                    'output_len': 5,  # Must be same with label_seq_len
+                    'train_weights': True,
+                    'attention_to': 'middle',
+                    'init_dist': 'uniform'
                 },
                 'finetune_params': {
                     "lr": 0.01,

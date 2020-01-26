@@ -1,10 +1,9 @@
 import torch
 
 from models.conv_lstm import ConvLSTM
-from models.traj_gru import TrajGRU
+from models.spatial_lstm import SpatialLSTM
 from models.ema import EMA
 from models.sma import SMA
-from models.spatial_lstm import SpatialLSTM
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -18,8 +17,6 @@ def trainer(batch_gens, **kwargs):
                      kwargs['finetune_params'])
     # model = SpatialLSTM(kwargs['constant_params'],
     #                     kwargs['finetune_params'])
-    # model = TrajGRU(kwargs['constant_params'],
-    #                 kwargs['finetune_params'])
     # model = EMA(kwargs['constant_params'],
     #             kwargs['finetune_params'])
     # model = SMA(kwargs['constant_params'],
@@ -32,15 +29,13 @@ def trainer(batch_gens, **kwargs):
         print('Epoch: {}/{}'.format(epoch, num_epoch))
         print('-*-' * 12)
 
-        # model.reset_per_epoch(batch_size=batch_size)
+        model.reset_per_epoch(batch_size=batch_size)
         train_loss = _train(model, batch_gens['train'])
         val_loss = _evaluate(model, batch_gens['validation'])
 
         print('Training Loss: {:.2f}, '
               'Validation Loss {:.2f}'.format(train_loss, val_loss))
 
-    test_loss = _evaluate(model, batch_gens['test'])
-    print('Test Loss: {:.2f}, '.format(test_loss))
     return model
 
 
@@ -48,9 +43,12 @@ def _train(model, batch_gen):
     model.train()
     running_loss = 0
     count = 0
+    print('\n')
     for grid, label_grid in batch_gen.batch_next():
+        print('\rtrain:{}'.format(count), flush=True, end='')
         count += 1
         running_loss += model.fit(grid, label_grid, batch_idx=count)
+    print('\n')
     return running_loss / count
 
 
@@ -58,12 +56,15 @@ def _evaluate(model, batch_gen):
     model.eval()
     running_loss = 0
     count = 0
+    print('\n')
     for grid, label_grid in batch_gen.batch_next():
+        print('\rvalidation:{}'.format(count), flush=True, end='')
         count += 1
         label_grid = label_grid.permute(0, 1, 4, 2, 3).cpu().numpy()
 
         pred = model.predict(grid)
         running_loss += model.score(label_grid, pred)
+    print('\n')
     return running_loss / count
 
 
