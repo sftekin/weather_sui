@@ -27,13 +27,13 @@ class Params:
                     'batch_size': 1,
                     'train_feature': [0, 1, 2, 3, 4],
                     'label_feature': [0],
-                    'train_seq_len': 30,
+                    'train_seq_len': 5,
                     'label_seq_len': 5,
                     'phase_shift': 1,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
-                    'window_in': 10,  # Same with train_seq_len
+                    'window_in': 5,  # Same with train_seq_len
                     'window_out': 5,  # Same with label_seq_len
                     'detach_step': 1,
                     'output_dim': 1,
