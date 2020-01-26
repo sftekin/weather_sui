@@ -48,7 +48,6 @@ def _train(model, batch_gen):
         print('\rtrain:{}'.format(count), flush=True, end='')
         count += 1
         running_loss += model.fit(grid, label_grid, batch_idx=count)
-    print('\n')
     return running_loss / count
 
 
@@ -56,7 +55,6 @@ def _evaluate(model, batch_gen):
     model.eval()
     running_loss = 0
     count = 0
-    print('\n')
     for grid, label_grid in batch_gen.batch_next():
         print('\rvalidation:{}'.format(count), flush=True, end='')
         count += 1

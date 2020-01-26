@@ -25,11 +25,11 @@ class Params:
             'CONVLSTM': {
                 'batch_params': {
                     'batch_size': 1,
-                    'train_feature': [0, 1, 2, 3, 4],
+                    'train_feature': [0],
                     'label_feature': [0],
                     'train_seq_len': 5,
                     'label_seq_len': 5,
-                    'phase_shift': 1,  # Phase difference between train data and label
+                    'phase_shift': 5,  # Phase difference between train data and label
                     'mode': 'train',
                 },
                 'constant_params': {
@@ -39,7 +39,7 @@ class Params:
                     'output_dim': 1,
                     'encoder_conf': {
                         'input_size': (21, 41),
-                        'input_dim': 5,
+                        'input_dim': 1,
                         'num_layers': 5,
                         'hidden_dim': [5, 16, 16, 32, 64],
                         'kernel_size': [5, 5, 5, 5, 5],
@@ -68,8 +68,8 @@ class Params:
                 },
                 'finetune_params': {
                     'clip': 5,
-                    "lr": 0.001,
-                    'epoch': 50,
+                    "lr": 0.0001,
+                    'epoch': 450,
                 }
             },
             'SpatialLSTM': {
