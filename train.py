@@ -9,18 +9,24 @@ from models.sma import SMA
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def trainer(batch_gens, **kwargs):
+def trainer(batch_gens, model_name, **kwargs):
     num_epoch = kwargs['finetune_params']['epoch']
     batch_size = kwargs['batch_params']['batch_size']
 
-    model = ConvLSTM(kwargs['constant_params'],
-                     kwargs['finetune_params'])
-    # model = SpatialLSTM(kwargs['constant_params'],
-    #                     kwargs['finetune_params'])
-    # model = EMA(kwargs['constant_params'],
-    #             kwargs['finetune_params'])
-    # model = SMA(kwargs['constant_params'],
-    #             kwargs['finetune_params'])
+    if model_name == 'CONVLSTM':
+        model = ConvLSTM(kwargs['constant_params'],
+                         kwargs['finetune_params'])
+    elif model_name == 'SpatialLSTM':
+        model = SpatialLSTM(kwargs['constant_params'],
+                            kwargs['finetune_params'])
+    elif model_name == 'EMA':
+        model = EMA(kwargs['constant_params'],
+                    kwargs['finetune_params'])
+    elif model_name == 'SMA':
+        model = SMA(kwargs['constant_params'],
+                    kwargs['finetune_params'])
+    else:
+        raise KeyError('input model name is wrong')
 
     model = model.to(device)
 
@@ -29,7 +35,8 @@ def trainer(batch_gens, **kwargs):
         print('Epoch: {}/{}'.format(epoch, num_epoch))
         print('-*-' * 12)
 
-        model.reset_per_epoch(batch_size=batch_size)
+        if model_name in ['CONVLSTM', 'SpatialLSTM']:
+            model.reset_per_epoch(batch_size=batch_size)
         train_loss = _train(model, batch_gens['train'])
         val_loss = _evaluate(model, batch_gens['validation'])
 

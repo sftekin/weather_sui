@@ -8,7 +8,7 @@ class Params:
         self.data_params = {
             'start_date': pd.to_datetime('01-01-2017 00:00:00', format='%d-%m-%Y %H:%M:%S'),
             'end_date': pd.to_datetime('27-03-2018 00:00:00', format='%d-%m-%Y %H:%M:%S'),
-            'freq': 3,
+            'freq': 24,
             'normalise_events': False,
             'data_path': 'data/London_historical_meo_grid.csv',
             'data_save_path': 'data/pickles/raw_data.pkl',
@@ -144,7 +144,7 @@ class Params:
                 },
                 'finetune_params': {
                     "lr": 0.01,
-                    'epoch': 200,
+                    'epoch': 50,
 
                 }
             }

@@ -50,7 +50,7 @@ def _plot_heat_map(in_figure, label, pred, count):
         plt.yticks(())
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.savefig('results/figures/heat_map_{}.png'.format(count),
-                bbox_inches="tight", pad_inches=0, dpi=500)
+                bbox_inches="tight", pad_inches=0, dpi=250)
 
 
 def _plot_time_plot(time_plot, in_data):
