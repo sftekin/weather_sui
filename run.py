@@ -7,7 +7,7 @@ from train import trainer
 
 
 def run():
-    model_name = 'SMA'
+    model_name = 'CONVLSTM'
     params = Params()
 
     grid_data = get_data(params.data_params)

@@ -1,7 +1,6 @@
 import torch
 
 from models.conv_lstm import ConvLSTM
-from models.spatial_lstm import SpatialLSTM
 from models.ema import EMA
 from models.sma import SMA
 
@@ -16,9 +15,6 @@ def trainer(batch_gens, model_name, **kwargs):
     if model_name == 'CONVLSTM':
         model = ConvLSTM(kwargs['constant_params'],
                          kwargs['finetune_params'])
-    elif model_name == 'SpatialLSTM':
-        model = SpatialLSTM(kwargs['constant_params'],
-                            kwargs['finetune_params'])
     elif model_name == 'EMA':
         model = EMA(kwargs['constant_params'],
                     kwargs['finetune_params'])

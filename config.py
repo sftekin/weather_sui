@@ -72,40 +72,6 @@ class Params:
                     'epoch': 100,
                 }
             },
-            'SpatialLSTM': {
-                'batch_params': {
-                    'batch_size': 5,
-                    'train_feature': [0, 1, 2, 3, 4],
-                    'label_feature': [0],
-                    'train_seq_len': 10,
-                    'label_seq_len': 10,
-                    'phase_shift': 1,  # Phase difference between train data and label
-                    'mode': 'train',
-                },
-                'constant_params': {
-                    'input_size': (21, 41),
-                    'seq_len': 10,
-                    'input_dim': 5,
-                    'hidden_dim': 5,
-                    'num_layer': 2,
-                    'bias': True,
-                    'drop_prob': 0.3,
-                    'output_dim': 1,
-                    'conv_conf': {
-                        'input_dim': 5,
-                        'kernel_size': 1,
-                        'stride': 1,
-                    },
-                    'stateful': True,
-                    "regression": "regression",
-                    "loss_type": "MSE"
-                },
-                'finetune_params': {
-                    'clip': 5,
-                    "lr": 0.001,
-                    'epoch': 50,
-                }
-            },
             'EMA': {
                 'batch_params': {
                     'batch_size': 1,
